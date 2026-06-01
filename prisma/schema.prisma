@@ -1,13 +1,44 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  role      Role     @default(PIC_LOGISTIK)
+  tasks     Ticket[] @relation("PICTasks") 
+  createdAt DateTime @default(now())
+}
+
+model Ticket {
+  id           String    @id @default(uuid())
+  ticketNumber String    @unique 
+  title        String
+  description  String
+  category     String    @default("Umum") 
+  status       Status    @default(OPEN)
+  issueImgUrl  String?      
+  proofImgUrl  String?      
+  
+  branchName   String    
+
+  picId        String?
+  pic          User?     @relation("PICTasks", fields: [picId], references: [id])
+  createdAt    DateTime  @default(now())  
+  resolvedAt   DateTime?  
+}
+
+enum Role {
+  OPERATOR
+  PIC_LOGISTIK
+}
+
+enum Status {
+  OPEN
+  IN_PROGRESS
+  DONE
 }
