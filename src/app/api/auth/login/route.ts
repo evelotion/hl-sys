@@ -5,22 +5,31 @@ import { db } from '../../../../lib/db';
 
 export async function POST(request: Request) {
   try {
-    const { initial, password } = await request.json();
+    const body = await request.json();
+    
+    // Fallback: ambil 'initial', tapi kalau undefined ambil 'nip' (jaga-jaga cache browser lama)
+    const userInitial = body.initial || body.nip || '';
+    const password = body.password;
     
     // 1. Cek validasi default password
     if (password !== 'password123') {
       return NextResponse.json({ error: 'Password salah! Gunakan password default.' }, { status: 401 });
     }
 
+    // 2. Validasi kalau inputan inisialnya kosong
+    if (!userInitial) {
+      return NextResponse.json({ error: 'Inisial tidak boleh kosong!' }, { status: 400 });
+    }
+
     let user;
-    const upperInitial = initial.toUpperCase();
+    const upperInitial = userInitial.toUpperCase();
     
-    // 2. Logika bypass berdasarkan Inisial
+    // 3. Logika bypass berdasarkan Inisial
     if (upperInitial === 'OPR') {
       user = await db.user.findFirst({ where: { role: 'OPERATOR' } });
       if (!user) user = await db.user.create({ data: { name: 'Ajeng Endah', role: 'OPERATOR' } });
     } else if (upperInitial === 'IND') {
-      // Akses khusus lo sebagai Developer
+      // Akses khusus Developer
       user = await db.user.findFirst({ where: { name: 'Indra Dwi Ananda' } });
       if (!user) user = await db.user.create({ data: { name: 'Indra Dwi Ananda', role: 'OPERATOR' } });
     } else if (upperInitial === 'IBL') {
@@ -35,7 +44,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Inisial tidak ditemukan di sistem!' }, { status: 401 });
     }
 
-    // 3. Pasang session ke Cookie
+    // 4. Pasang session ke Cookie
     const cookieStore = await cookies();
     cookieStore.set('user_session', JSON.stringify({ id: user.id, name: user.name, role: user.role }), {
       httpOnly: true,
