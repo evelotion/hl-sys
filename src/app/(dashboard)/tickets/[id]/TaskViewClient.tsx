@@ -8,11 +8,14 @@ import { ArrowLeft, Edit, Save, Loader2, X, Calendar, Clock, CheckCircle2, Alert
 
 export default function TaskViewClient({ initialTicket, pics, currentUser }: { initialTicket: any, pics: any[], currentUser: any }) {
   const router = useRouter();
-  // Tambahkan fallback objek kosong {} jika initialTicket undefined
   const [ticket, setTicket] = useState(initialTicket || {});
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  
+  // State untuk chat/komentar
+  const [comment, setComment] = useState('');
+  const [isCommenting, setIsCommenting] = useState(false);
 
   // State untuk form edit pakai Optional Chaining (?.) biar anti-crash
   const [editForm, setEditForm] = useState({
@@ -38,6 +41,24 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     return false;
   }) || [];
 
+  // Fungsi nambah komentar (Activity Log)
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!comment.trim()) return;
+    setIsCommenting(true);
+    try {
+      await fetch(`/api/tickets/${ticket.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ADD_COMMENT', message: comment, userId: currentUser?.id })
+      });
+      setComment('');
+      router.refresh();
+    } finally {
+      setIsCommenting(false);
+    }
+  };
+
   // Fungsi simpan Edit (PATCH)
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,11 +67,12 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       const res = await fetch(`/api/tickets/${ticket.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm)
+        // Sisipkan userId buat nyatet log siapa yang edit
+        body: JSON.stringify({ ...editForm, userId: currentUser?.id })
       });
       const data = await res.json();
       if (data.success) {
-        setTicket({ ...ticket, ...data.ticket }); // Update UI tanpa reload
+        setTicket({ ...ticket, ...data.ticket });
         setIsEditOpen(false);
         router.refresh();
       }
@@ -69,7 +91,8 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       const res = await fetch(`/api/tickets/${ticket.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'UPDATE_STATUS', status: newStatus })
+        // Sisipkan userId buat nyatet log otomatis
+        body: JSON.stringify({ action: 'UPDATE_STATUS', status: newStatus, userId: currentUser?.id })
       });
       const data = await res.json();
       if (data.success) {
@@ -108,7 +131,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Kiri: Detail Tiket */}
+        {/* Kiri: Detail Tiket & Timeline */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-8 rounded-[24px] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
             <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -125,6 +148,41 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
 
             <h1 className="text-2xl font-black text-slate-800 mb-2">{ticket?.title}</h1>
             <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{ticket?.description}</p>
+          </div>
+
+          {/* Riwayat Aktivitas & Komentar */}
+          <div className="bg-white p-8 rounded-[24px] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+            <h3 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">Jejak Aktivitas & Catatan</h3>
+            
+            <div className="space-y-5 mb-6">
+              {ticket?.logs?.length === 0 ? (
+                <p className="text-xs text-slate-400 font-medium">Belum ada catatan aktivitas.</p>
+              ) : (
+                ticket?.logs?.map((log: any) => (
+                  <div key={log.id} className="flex gap-4">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs shrink-0 border border-slate-200">
+                      {log.user?.initial || '?'}
+                    </div>
+                    <div className="flex-1 bg-slate-50 p-4 rounded-2xl rounded-tl-none border border-slate-100">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-xs text-slate-700">{log.user?.name} <span className="font-medium text-slate-400">({log.user?.role === 'OPERATOR' ? 'ADM' : 'PIC'})</span></span>
+                        <span className="text-[10px] font-bold text-slate-400">{new Date(log.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <p className={`text-sm ${log.action === 'SYSTEM' ? 'text-indigo-600 font-medium italic' : 'text-slate-600'}`}>
+                        {log.message}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <form onSubmit={handleAddComment} className="flex gap-3">
+              <input type="text" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Ketik catatan / update progress di sini..." className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-300" />
+              <button type="submit" disabled={isCommenting || !comment.trim()} className="px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition-colors disabled:opacity-50 text-sm">
+                {isCommenting ? 'Kirim...' : 'Kirim'}
+              </button>
+            </form>
           </div>
 
           {/* Bagian Bukti Media (Jika Ada) */}
@@ -200,9 +258,9 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                 <button onClick={() => setIsEditOpen(false)} className="p-2 bg-slate-50 text-slate-500 hover:text-red-500 rounded-full transition-colors"><X size={20}/></button>
               </div>
               
-<form onSubmit={handleSaveEdit} className="p-6 space-y-5">
+              <form onSubmit={handleSaveEdit} className="p-6 space-y-5">
                 
-                {/* VVV TAMBAHAN: Kolom Edit Tanggal VVV */}
+                {/* Kolom Edit Tanggal */}
                 <div className="space-y-1 border-b border-slate-100 pb-4">
                   <label className="text-xs font-bold text-slate-500">Tanggal Permintaan (Request Date)</label>
                   <input 
@@ -213,7 +271,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300" 
                   />
                 </div>
-                {/* ^^^ BATAS TAMBAHAN ^^^ */}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">

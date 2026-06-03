@@ -11,7 +11,13 @@ export default async function TaskViewPage({ params }: { params: { id: string } 
   // 1. Ambil data tiket beserta relasi PIC-nya
   const ticket = await db.ticket.findUnique({
     where: { id: id },
-    include: { pic: true }
+    include: { 
+      pic: true,
+      logs: {          // <-- Tambahan buat narik data history
+        include: { user: true }, 
+        orderBy: { createdAt: 'asc' } 
+      }
+    }
   });
 
   if (!ticket) {

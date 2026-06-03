@@ -15,6 +15,7 @@ model User {
   role      Role     @default(PIC_LOGISTIK)
   tasks     Ticket[] @relation("PICTasks")
   createdAt DateTime @default(now())
+  logs      ActivityLog[]
 }
 
 model Ticket {
@@ -34,6 +35,18 @@ model Ticket {
   pic          User?     @relation("PICTasks", fields: [picId], references: [id])
   createdAt    DateTime  @default(now())
   resolvedAt   DateTime?
+  logs      ActivityLog[]
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   // Contoh: "COMMENT", "SYSTEM"
+  message   String
+  createdAt DateTime @default(now())
 }
 
 enum Role {
