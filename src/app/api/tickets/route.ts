@@ -1,8 +1,7 @@
 // hl-sys/src/app/api/tickets/route.ts
 import { NextResponse } from 'next/server';
-import { db } from '@/src/lib/db'; // <-- Pakai alias biar anti-nyasar
+import { db } from '@/src/lib/db'; 
 
-// Fungsi bantuan untuk nambah hari ke tanggal
 function addDays(date: Date, days: number) {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
@@ -12,16 +11,15 @@ function addDays(date: Date, days: number) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, description, category, branchName, picId, requestDate, mediaRequest, issueImgUrl } = body;
+    // Tambahin requesterName di sini
+    const { title, description, category, branchName, requesterName, picId, requestDate, mediaRequest, issueImgUrl } = body;
 
     const year = new Date().getFullYear();
     const count = await db.ticket.count();
     const ticketNumber = `LOG-${year}-${String(count + 1).padStart(4, '0')}`;
 
-    // Tentukan Base Date (Tanggal Request atau Hari ini)
     const baseDate = requestDate ? new Date(requestDate) : new Date();
     
-    // LOGIKA PENENTUAN SLA OTOMATIS
     let deadline = new Date(baseDate);
     if (category === 'P3') {
       deadline = addDays(baseDate, 3);
@@ -30,7 +28,7 @@ export async function POST(request: Request) {
     } else if (category === 'Pengadaan') {
       deadline = addDays(baseDate, 14);
     } else {
-      deadline = addDays(baseDate, 1); // Default Umum 1 Hari
+      deadline = addDays(baseDate, 1); 
     }
 
     const newTicket = await db.ticket.create({
@@ -40,9 +38,10 @@ export async function POST(request: Request) {
         description,
         category,
         branchName,
+        requesterName, // <-- Masukin ke payload database
         mediaRequest,
         requestDate: baseDate,
-        slaDeadline: deadline, // <-- Masukin hasil hitungan ke database
+        slaDeadline: deadline, 
         issueImgUrl,
         picId: picId || null,
         status: 'OPEN',

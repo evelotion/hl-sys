@@ -16,6 +16,7 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
     requestDate: '',
     mediaRequest: 'Telepon',
     branchName: '',
+    requesterName: '', // <-- State baru buat nangkep nama
     category: '',
     picId: '',
     title: '', 
@@ -23,15 +24,14 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
     issueImgUrl: ''
   });
 
-  // Logika Filter PIC berdasarkan Inisial
   const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL'];
   const pembayaranInitials = ['RIN', 'ETK', 'RKS', 'RLY'];
-  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS']; // <-- Ditambahin di sini Bro
+  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS']; 
 
   const filteredPics = pics.filter(pic => {
     if (formData.category === 'P3') return p3Initials.includes(pic.initial);
     if (formData.category === 'Pembayaran') return pembayaranInitials.includes(pic.initial);
-    if (formData.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial); // <-- Diupdate biar cuma nampilin tim pengadaan
+    if (formData.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial); 
     return false;
   });
 
@@ -125,6 +125,14 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Cabang / Unit Pengaju</label>
             <input required type="text" placeholder="Contoh: KCP Depok" value={formData.branchName} onChange={(e) => setFormData({ ...formData, branchName: e.target.value })}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
+            />
+          </div>
+
+          {/* TAMBAHAN BARU: Nama Requester */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Nama Requester</label>
+            <input required type="text" placeholder="Contoh: Budi Santoso" value={formData.requesterName} onChange={(e) => setFormData({ ...formData, requesterName: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
             />
           </div>

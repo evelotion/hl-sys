@@ -21,21 +21,22 @@ model User {
 model Ticket {
   id           String    @id @default(uuid())
   ticketNumber String    @unique
-  title        String    // <-- Di UI kita sebut "Perihal"
+  title        String    
   description  String
   category     String    @default("Umum")
   status       Status    @default(OPEN)
   issueImgUrl  String?
   proofImgUrl  String?
   branchName   String
-  mediaRequest String?   // <-- Tambahan: Telepon, Email, Teams
-  requestDate  DateTime? // <-- Tambahan: Tanggal Permintaan
+  requesterName String?  // <-- TAMBAHIN BARIS INI BRO
+  mediaRequest String?   
+  requestDate  DateTime? 
   slaDeadline  DateTime?
   picId        String?
   pic          User?     @relation("PICTasks", fields: [picId], references: [id])
   createdAt    DateTime  @default(now())
   resolvedAt   DateTime?
-  logs      ActivityLog[]
+  logs         ActivityLog[]
 }
 
 model ActivityLog {
