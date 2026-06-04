@@ -63,24 +63,48 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // VALIDASI WAJIB UPLOAD JIKA BUKAN LISAN
+    // 1. VALIDASI SPASI KOSONG (TRIM)
+    const titleReal = formData.title.trim();
+    const descReal = formData.description.trim();
+
+    if (titleReal.length < 5) {
+      alert("⚠️ Perihal harus diisi minimal 5 karakter huruf/angka (spasi kosong tidak dihitung)!");
+      return;
+    }
+
+    if (descReal.length < 10) {
+      alert("⚠️ Deskripsi harus diisi minimal 10 karakter huruf/angka (spasi kosong tidak dihitung)!");
+      return;
+    }
+
+    // 2. VALIDASI WAJIB UPLOAD JIKA BUKAN LISAN
     if (formData.mediaRequest !== 'Lisan / Verbal' && !formData.issueImgUrl) {
       alert("⚠️ File pendukung WAJIB di-upload jika media request bukan Lisan / Verbal!");
       return;
     }
 
+    // 3. VALIDASI KATEGORI DAN PIC
     if (!formData.category || !formData.picId) {
       alert("Pilih Kategori dan PIC terlebih dahulu!");
       return;
     }
 
     setIsLoading(true);
+    
     try {
+      // Kita bungkus data yang udah dibersihkan (tanpa spasi kosong berlebih)
+      const finalPayload = {
+        ...formData,
+        title: titleReal,
+        description: descReal
+      };
+
       const res = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(finalPayload), // Kirim data bersih ke database
       });
+      
       if (res.ok) {
         router.push('/tickets');
         router.refresh();
@@ -91,7 +115,7 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
       setIsLoading(false);
     }
   };
-
+  
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-10">
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>

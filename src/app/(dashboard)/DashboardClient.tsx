@@ -22,6 +22,16 @@ export default function DashboardClient({
   userRole: string; 
 }) {
   
+  // Kalkulasi Persentase buat Chart & Progress Bar (Anti-NaN kalau total request 0)
+  const safeTotal = totalRequest === 0 ? 1 : totalRequest;
+  const donePercentage = totalRequest === 0 ? 0 : Math.round((completed / safeTotal) * 100);
+  const pendingPercentage = totalRequest === 0 ? 0 : 100 - donePercentage;
+
+  // Rumus Keliling Lingkaran SVG untuk Donut Chart
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const doneStroke = (donePercentage / 100) * circumference;
+
   const containerVariants = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { staggerChildren: 0.08 } }
@@ -53,43 +63,94 @@ export default function DashboardClient({
         </div>
       </motion.header>
 
-      {/* Bento Grid Layout */}
+      {/* Bento Grid Layout - Ditambah Visual Chart */}
       <motion.div 
         variants={containerVariants} 
         initial="hidden" 
         animate="show"
         className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-5"
       >
-        {/* Main Big KPI */}
+        {/* Main Big KPI + Animated Progress Bar */}
         <motion.div 
           variants={itemVariants}
-          className="md:col-span-2 lg:col-span-4 bg-white/90 backdrop-blur-xl p-6 rounded-[24px] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] transition-all duration-300 relative overflow-hidden group"
+          className="md:col-span-2 lg:col-span-4 bg-white/90 backdrop-blur-xl p-6 rounded-[24px] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] transition-all duration-300 relative overflow-hidden group flex flex-col justify-between"
         >
-          <div className="flex justify-between items-start mb-6">
-            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100/50 group-hover:scale-110 transition-transform duration-300">
-              <Inbox size={20} />
-            </div>
-            <ArrowUpRight size={18} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
-          </div>
           <div>
-            <p className="text-5xl font-black text-slate-800 tracking-tighter">{totalRequest}</p>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">Total Request</p>
+            <div className="flex justify-between items-start mb-6">
+              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100/50 group-hover:scale-110 transition-transform duration-300">
+                <Inbox size={20} />
+              </div>
+              <ArrowUpRight size={18} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
+            </div>
+            <div>
+              <p className="text-5xl font-black text-slate-800 tracking-tighter">{totalRequest}</p>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Total Request</p>
+            </div>
+          </div>
+          
+          {/* Animated Linear Progress Bar */}
+          <div className="mt-6 pt-5 border-t border-slate-100/60">
+            <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-2">
+              <span>Penyelesaian Keseluruhan</span>
+              <span className="text-indigo-600">{donePercentage}%</span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden shadow-inner">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${donePercentage}%` }}
+                transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
+                className="bg-gradient-to-r from-indigo-400 to-indigo-600 h-full rounded-full relative"
+              >
+                <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse"></div>
+              </motion.div>
+            </div>
           </div>
         </motion.div>
 
-        {/* Medium KPIs */}
+        {/* Medium KPI + SVG Donut/Pie Chart */}
         <motion.div 
           variants={itemVariants}
           className="md:col-span-2 lg:col-span-4 bg-white/90 backdrop-blur-xl p-6 rounded-[24px] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] transition-all duration-300 relative overflow-hidden group"
         >
-          <div className="flex justify-between items-start mb-6">
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100/50 group-hover:scale-110 transition-transform duration-300">
-              <CheckCircle size={20} />
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100/50 inline-block group-hover:scale-110 transition-transform duration-300 mb-4">
+                <CheckCircle size={20} />
+              </div>
+              <p className="text-5xl font-black text-slate-800 tracking-tighter">{completed}</p>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Tugas Selesai</p>
+            </div>
+
+            {/* Custom SVG Donut Chart */}
+            <div className="relative w-28 h-28 flex-shrink-0 drop-shadow-sm">
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                {/* Background Circle (Pending/Amber) */}
+                <circle cx="50" cy="50" r={radius} fill="none" stroke="#fef3c7" strokeWidth="12" />
+                {/* Foreground Circle (Done/Emerald) */}
+                <motion.circle 
+                  cx="50" cy="50" r={radius} fill="none" stroke="#10b981" strokeWidth="12"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  initial={{ strokeDashoffset: circumference }}
+                  animate={{ strokeDashoffset: circumference - doneStroke }}
+                  transition={{ duration: 1.5, ease: "easeOut", delay: 0.3 }}
+                />
+              </svg>
+              {/* Text Inside Donut */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-xl font-black text-slate-700">{donePercentage}%</span>
+              </div>
             </div>
           </div>
-          <div>
-            <p className="text-5xl font-black text-slate-800 tracking-tighter">{completed}</p>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">Tugas Selesai</p>
+
+          {/* Legend Chart */}
+          <div className="flex gap-4 pt-4 border-t border-slate-100/60 mt-1">
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span> {donePercentage}% Selesai
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-200 shadow-sm"></span> {pendingPercentage}% Pending
+            </div>
           </div>
         </motion.div>
 
