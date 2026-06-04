@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle } from 'lucide-react';
 
 interface PICWorkload {
   name: string;
@@ -24,21 +24,24 @@ interface TicketData {
 }
 
 export default function DashboardClient({ 
-  totalRequest, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName
+  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket
 }: {
   totalRequest: number;
+  requestCount: number; 
   onProgress: number;
   completed: number;
   slaOnTime: number;
   picWorkload: PICWorkload[];
   userRole: string; 
   recentTickets: TicketData[]; 
-  userName: string; // <--- PROPS BARU
+  userName: string;
+  urgentTicket?: TicketData | null; // <--- PROPS BARU DITAMBAHKAN
 }) {
   
   const safeTotal = totalRequest === 0 ? 1 : totalRequest;
   const donePercentage = totalRequest === 0 ? 0 : Math.round((completed / safeTotal) * 100);
   const progressPercentage = totalRequest === 0 ? 0 : Math.round((onProgress / safeTotal) * 100);
+  const requestPercentage = totalRequest === 0 ? 0 : Math.round((requestCount / safeTotal) * 100); 
 
   const radius = 40;
   const circumference = 2 * Math.PI * radius;
@@ -68,7 +71,6 @@ export default function DashboardClient({
     return 'bg-blue-500';
   };
 
-  // Ambil nama depan saja untuk sapaan
   const firstName = userName ? userName.split(' ')[0] : 'Guest';
 
   return (
@@ -227,58 +229,110 @@ export default function DashboardClient({
         </div>
       </div>
 
-      {/* 3. Barisan Bawah */}
+      {/* 3. Barisan Bawah (Dibagi 2 Kolom) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
-        {/* LATEST TICKET CARD */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tiket Terbaru Masuk</h3>
-            {latestTicket && (
-              <span className="flex h-2.5 w-2.5 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
-              </span>
+        
+        {/* KOLOM KIRI: DIBAGI 2 KARTU (URGENT & LATEST) */}
+        <div className="flex flex-col gap-4 h-full">
+          
+          {/* URGENT TICKET CARD */}
+          <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-sm flex flex-col flex-1 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500"></div>
+            <div className="flex items-center justify-between mb-3 pl-2">
+              <h3 className="text-[10px] font-bold text-red-600 uppercase tracking-widest flex items-center gap-1.5">
+                <AlertCircle size={14}/> Butuh Perhatian (SLA Kritis)
+              </h3>
+              {urgentTicket && urgentTicket.sla >= 80 && (
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+              )}
+            </div>
+            
+            {urgentTicket ? (
+              <div className="flex-1 flex flex-col justify-center pl-2">
+                 <div className="bg-gradient-to-br from-red-50/50 to-white border border-red-100 p-4 rounded-xl h-full flex flex-col justify-between">
+                   <div>
+                     <div className="flex justify-between items-start gap-3 mb-2">
+                       <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[9px] font-black rounded-md">{urgentTicket.id}</span>
+                       <span className="text-[9px] text-slate-500 font-bold">{urgentTicket.date}</span>
+                     </div>
+                     <h4 className="text-xs font-bold text-slate-800 line-clamp-2 leading-snug mb-3">
+                       {urgentTicket.title}
+                     </h4>
+                     <div className="flex items-center gap-2 flex-wrap">
+                       <span className="text-[9px] font-bold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded flex items-center gap-1"><Tags size={10} /> {urgentTicket.category}</span>
+                       <span className="text-[9px] font-bold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded flex items-center gap-1">📍 {urgentTicket.cabang}</span>
+                     </div>
+                   </div>
+                   
+                   <div className="mt-3 pt-3 border-t border-red-100/50">
+                     <div className="flex justify-between items-center mb-1.5">
+                       <span className="text-[9px] font-bold text-slate-500">SLA: <span className="text-red-600 font-black">{urgentTicket.sla}%</span></span>
+                       <span className={`px-1.5 py-0.5 text-[8px] font-black rounded-md border ${getStatusColor(urgentTicket.status)}`}>{urgentTicket.status}</span>
+                     </div>
+                     <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                       <motion.div initial={{ width: 0 }} animate={{ width: `${urgentTicket.progress}%` }} className={`h-full ${getBarColor(urgentTicket.status)}`}></motion.div>
+                       <motion.div initial={{ width: 0 }} animate={{ width: `${urgentTicket.sla}%` }} className={`h-full ${urgentTicket.sla > 80 ? 'bg-red-500' : 'bg-red-300'}`}></motion.div>
+                     </div>
+                   </div>
+                 </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center border-2 border-dashed border-slate-100 rounded-xl p-4 ml-2">
+                 <span className="text-[10px] font-medium text-slate-400">Tidak ada tiket SLA kritis. Aman! 🎉</span>
+              </div>
             )}
           </div>
-          
-          {latestTicket ? (
-            <div className="flex-1 flex flex-col justify-center">
-               <div className="bg-gradient-to-br from-indigo-50/50 to-white border border-indigo-100 p-5 rounded-2xl h-full flex flex-col justify-between">
-                 <div>
-                   <div className="flex justify-between items-start gap-3 mb-3">
-                     <span className="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-lg">{latestTicket.id}</span>
-                     <span className="text-[10px] text-slate-500 font-bold">{latestTicket.date}</span>
+
+          {/* LATEST TICKET CARD */}
+          <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm flex flex-col flex-1 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
+            <div className="flex items-center justify-between mb-3 pl-2">
+              <h3 className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-1.5">
+                <Clock size={14}/> Tiket Terbaru Masuk
+              </h3>
+            </div>
+            
+            {latestTicket ? (
+              <div className="flex-1 flex flex-col justify-center pl-2">
+                 <div className="bg-gradient-to-br from-indigo-50/50 to-white border border-indigo-100 p-4 rounded-xl h-full flex flex-col justify-between">
+                   <div>
+                     <div className="flex justify-between items-start gap-3 mb-2">
+                       <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[9px] font-black rounded-md">{latestTicket.id}</span>
+                       <span className="text-[9px] text-slate-500 font-bold">{latestTicket.date}</span>
+                     </div>
+                     <h4 className="text-xs font-bold text-slate-800 line-clamp-2 leading-snug mb-3">
+                       {latestTicket.title}
+                     </h4>
+                     <div className="flex items-center gap-2 flex-wrap">
+                       <span className="text-[9px] font-bold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded flex items-center gap-1"><Tags size={10} /> {latestTicket.category}</span>
+                       <span className="text-[9px] font-bold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded flex items-center gap-1">📍 {latestTicket.cabang}</span>
+                     </div>
                    </div>
-                   <h4 className="text-sm font-bold text-slate-800 line-clamp-2 leading-snug mb-4">
-                     {latestTicket.title}
-                   </h4>
-                   <div className="flex items-center gap-2 flex-wrap">
-                     <span className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-md flex items-center gap-1"><Tags size={10} /> {latestTicket.category}</span>
-                     <span className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-md flex items-center gap-1">📍 {latestTicket.cabang}</span>
+                   
+                   <div className="mt-3 pt-3 border-t border-indigo-100/50">
+                     <div className="flex justify-between items-center mb-1.5">
+                       <span className="text-[9px] font-bold text-slate-500">SLA: <span className="text-indigo-600 font-black">{latestTicket.sla}%</span></span>
+                       <span className={`px-1.5 py-0.5 text-[8px] font-black rounded-md border ${getStatusColor(latestTicket.status)}`}>{latestTicket.status}</span>
+                     </div>
+                     <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                       <motion.div initial={{ width: 0 }} animate={{ width: `${latestTicket.progress}%` }} className={`h-full ${getBarColor(latestTicket.status)}`}></motion.div>
+                       <motion.div initial={{ width: 0 }} animate={{ width: `${latestTicket.sla}%` }} className="h-full bg-indigo-300 opacity-50"></motion.div>
+                     </div>
                    </div>
                  </div>
-                 
-                 {/* Progress Bar Info */}
-                 <div className="mt-4 pt-4 border-t border-indigo-100/50">
-                   <div className="flex justify-between items-center mb-1.5">
-                     <span className="text-[10px] font-bold text-slate-500">Status & SLA Saat Ini</span>
-                     <span className={`px-2 py-0.5 text-[9px] font-black rounded-md border ${getStatusColor(latestTicket.status)}`}>{latestTicket.status}</span>
-                   </div>
-                   <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
-                     <motion.div initial={{ width: 0 }} animate={{ width: `${latestTicket.progress}%` }} className={`h-full ${getBarColor(latestTicket.status)}`}></motion.div>
-                     <motion.div initial={{ width: 0 }} animate={{ width: `${latestTicket.sla}%` }} className="h-full bg-indigo-200 opacity-50"></motion.div>
-                   </div>
-                 </div>
-               </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center border-2 border-dashed border-slate-100 rounded-2xl p-6">
-               <span className="text-xs font-medium text-slate-400">Belum ada tiket baru masuk.</span>
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center border-2 border-dashed border-slate-100 rounded-xl p-4 ml-2">
+                 <span className="text-[10px] font-medium text-slate-400">Belum ada tiket baru masuk.</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Completion Tracking Chart */}
+        {/* KOLOM KANAN: Completion Tracking Chart */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 md:mb-2">Completion Tracking</h3>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-8 flex-1">
@@ -303,7 +357,7 @@ export default function DashboardClient({
               </div>
               <div className="flex items-center justify-center sm:justify-start gap-2">
                 <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                <span className="text-xs font-bold text-slate-600">Process</span>
+                <span className="text-xs font-bold text-slate-600">Request Baru ({requestPercentage}%)</span>
               </div>
             </div>
           </div>

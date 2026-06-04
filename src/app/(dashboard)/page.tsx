@@ -14,17 +14,15 @@ export default async function DashboardPage() {
   const user = JSON.parse(sessionStr);
 
   const isPic = user.role === 'PIC_LOGISTIK';
-  
   const whereBase = isPic ? { picId: user.id } : {};
 
+  // 1. KPI Metrik
   const totalRequest = await db.ticket.count({ where: whereBase });
-  const onProgress = await db.ticket.count({
-    where: { ...whereBase, status: { in: ['OPEN', 'IN_PROGRESS'] } }
-  });
-  const completed = await db.ticket.count({
-    where: { ...whereBase, status: 'DONE' }
-  });
+  const requestCount = await db.ticket.count({ where: { ...whereBase, status: 'OPEN' } });
+  const onProgress = await db.ticket.count({ where: { ...whereBase, status: 'IN_PROGRESS' } });
+  const completed = await db.ticket.count({ where: { ...whereBase, status: 'DONE' } });
 
+  // 2. SLA Tracking
   const completedTickets = await db.ticket.findMany({
     where: { ...whereBase, status: 'DONE' },
     select: { createdAt: true, resolvedAt: true, slaDeadline: true }
@@ -41,6 +39,7 @@ export default async function DashboardPage() {
     slaOnTimePercentage = 0; 
   }
 
+  // 3. Beban Kerja PIC
   const pics = await db.user.findMany({
     where: { role: 'PIC_LOGISTIK' },
     include: { tasks: true }
@@ -52,14 +51,8 @@ export default async function DashboardPage() {
     return { name: pic.name, activeTasks, completed: completedTasks };
   });
 
-  const recentData = await db.ticket.findMany({
-    where: whereBase,
-    orderBy: { createdAt: 'desc' },
-    take: 5,
-    include: { pic: true }
-  });
-
-  const recentTickets = recentData.map((t: any) => {
+  // Helper Fungsi Biar Kode Rapih & Gak Berulang
+  const formatTicketData = (t: any) => {
     let progress = 25; 
     if (t.status === 'IN_PROGRESS') progress = 65;
     if (t.status === 'DONE') progress = 100;
@@ -87,17 +80,34 @@ export default async function DashboardPage() {
       progress: progress,
       sla: sla,
       pic: t.pic?.initial || 'N/A',
-      // --- DATA TAMBAHAN BUAT UI LATEST TICKET ---
       title: t.title,
       category: t.category,
       cabang: t.branchName,
       date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
     };
+  };
+
+  // 4. Cari Tiket SLA Paling Kritis (Belum selesai, deadline terdekat)
+  const urgentDataRes = await db.ticket.findFirst({
+    where: { ...whereBase, status: { not: 'DONE' }, slaDeadline: { not: null } },
+    orderBy: { slaDeadline: 'asc' }, // Cari deadline yang paling awal/dekat
+    include: { pic: true }
   });
+  const urgentTicket = urgentDataRes ? formatTicketData(urgentDataRes) : null;
+
+  // 5. Cari 5 Tiket Terbaru
+  const recentData = await db.ticket.findMany({
+    where: whereBase,
+    orderBy: { createdAt: 'desc' },
+    take: 5,
+    include: { pic: true }
+  });
+  const recentTickets = recentData.map(formatTicketData);
 
   return (
     <DashboardClient 
       totalRequest={totalRequest}
+      requestCount={requestCount}
       onProgress={onProgress}
       completed={completed}
       slaOnTime={slaOnTimePercentage}
@@ -105,6 +115,7 @@ export default async function DashboardPage() {
       userRole={user.role} 
       userName={user.name}
       recentTickets={recentTickets}
+      urgentTicket={urgentTicket} // <-- Lempar tiket urgent ke Client
     />
   );
 }
