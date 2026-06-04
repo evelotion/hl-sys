@@ -1,3 +1,4 @@
+// hl-sys/src/app/(dashboard)/tickets/create/CreateTicketClient.tsx
 "use client";
 
 import React, { useState } from 'react';
@@ -6,16 +7,24 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Loader2, UploadCloud, CheckCircle2 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 
-export default function CreateTicketClient({ pics }: { pics: { id: string, name: string, initial: string }[] }) {
+// Tambahin typing phone opsional biar TypeScript nggak marah
+interface PIC {
+  id: string;
+  name: string;
+  initial: string;
+  phone?: string | null; 
+}
+
+export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     requestDate: '',
-    mediaRequest: 'Lisan / Verbal', // <-- Default diganti
+    mediaRequest: 'Lisan / Verbal',
     branchName: '',
-    requesterName: '', 
+    requesterName: '', // Pastikan ini tetap ada
     category: '',
     picId: '',
     title: '', 
@@ -23,15 +32,14 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
     issueImgUrl: ''
   });
 
-  // Pastikan inisial Bu Anne (misal 'AND' atau 'ANN') TIDAK ADA di dalam array ini biar nggak muncul di dropdown
   const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL'];
   const pembayaranInitials = ['RIN', 'ETK', 'RKS', 'RLY'];
-  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'IDH', 'RML', 'HEN', 'MWS']; 
+  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS']; 
 
   const filteredPics = pics.filter(pic => {
     if (formData.category === 'P3') return p3Initials.includes(pic.initial);
     if (formData.category === 'Pembayaran') return pembayaranInitials.includes(pic.initial);
-    if (formData.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial); 
+    if (formData.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial);
     return false;
   });
 
@@ -63,59 +71,77 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 1. VALIDASI SPASI KOSONG (TRIM)
+    // Validasi Anti-Spasi (Trim)
     const titleReal = formData.title.trim();
     const descReal = formData.description.trim();
 
     if (titleReal.length < 5) {
-      alert("⚠️ Perihal harus diisi minimal 5 karakter huruf/angka (spasi kosong tidak dihitung)!");
+      alert("⚠️ Perihal harus diisi minimal 5 karakter huruf/angka!");
       return;
     }
-
     if (descReal.length < 10) {
-      alert("⚠️ Deskripsi harus diisi minimal 10 karakter huruf/angka (spasi kosong tidak dihitung)!");
+      alert("⚠️ Deskripsi harus diisi minimal 10 karakter huruf/angka!");
       return;
     }
-
-    // 2. VALIDASI WAJIB UPLOAD JIKA BUKAN LISAN
     if (formData.mediaRequest !== 'Lisan / Verbal' && !formData.issueImgUrl) {
       alert("⚠️ File pendukung WAJIB di-upload jika media request bukan Lisan / Verbal!");
       return;
     }
-
-    // 3. VALIDASI KATEGORI DAN PIC
     if (!formData.category || !formData.picId) {
       alert("Pilih Kategori dan PIC terlebih dahulu!");
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
-      // Kita bungkus data yang udah dibersihkan (tanpa spasi kosong berlebih)
-      const finalPayload = {
-        ...formData,
-        title: titleReal,
-        description: descReal
-      };
+      const finalPayload = { ...formData, title: titleReal, description: descReal };
 
       const res = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(finalPayload), // Kirim data bersih ke database
+        body: JSON.stringify(finalPayload),
       });
-      
+
+      const data = await res.json();
+
       if (res.ok) {
+        // --- LOGIKA WHATSAPP REDIRECT ---
+        const selectedPic = pics.find(p => p.id === formData.picId);
+        
+        if (selectedPic && selectedPic.phone) {
+          // Format nomor: Ubah awalan '0' atau '+62' jadi murni '62'
+          let waNumber = selectedPic.phone.replace(/[^0-9]/g, '');
+          if (waNumber.startsWith('0')) waNumber = '62' + waNumber.substring(1);
+
+          const ticketNum = data.ticket?.ticketNumber || 'Terbaru';
+          
+          // Template Pesan WA (Gunakan \n untuk baris baru)
+          const waText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticketNum}\n*Kategori:* ${formData.category}\n*Cabang/Unit:* ${formData.branchName}\n*Pemohon:* ${formData.requesterName}\n*Perihal:* ${titleReal}\n\nSegera login ke sistem *HL-SYS* untuk melihat detail pekerjaan dan klik mulai proses (In Progress) ya!\n\nSemangat! 💪`;
+
+          const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`;
+          
+          // Buka WA di tab baru
+          window.open(waUrl, '_blank');
+        } else {
+          // Kalau nomor PIC kosong di database, kasih alert
+          alert("Info: Nomor HP PIC tidak terdaftar di sistem. Notifikasi WhatsApp dilewati.");
+        }
+        // -------------------------------
+
+        // Balik ke halaman daftar tiket
         router.push('/tickets');
         router.refresh();
       } else {
+        alert("Gagal menyimpan tiket: " + data.error);
         setIsLoading(false);
       }
     } catch (error) {
+      alert("Terjadi kesalahan sistem.");
       setIsLoading(false);
     }
   };
-  
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-10">
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
@@ -144,7 +170,6 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
             <select value={formData.mediaRequest} onChange={(e) => setFormData({ ...formData, mediaRequest: e.target.value, issueImgUrl: e.target.value === 'Lisan / Verbal' ? '' : formData.issueImgUrl })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
             >
-              {/* Diubah jadi Lisan / Verbal */}
               <option value="Lisan / Verbal">Lisan / Verbal</option>
               <option value="Email">Email</option>
               <option value="Memo / Form Fisik">Memo / Form Fisik</option>
@@ -208,7 +233,6 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
           ></textarea>
         </div>
 
-        {/* Tanda Bintang Merah kalau media bukan Lisan */}
         <div className={`space-y-2 transition-opacity duration-300 ${formData.mediaRequest === 'Lisan / Verbal' ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
             <span>Upload File Pendukung {formData.mediaRequest !== 'Lisan / Verbal' && <span className="text-red-500">*WAJIB</span>}</span>
@@ -248,7 +272,7 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
           <motion.button whileHover={{ scale: 1.01, y: -2 }} whileTap={{ scale: 0.98 }} disabled={isLoading} type="submit"
             className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white font-bold rounded-xl shadow-[0_8px_20px_rgb(79,70,229,0.25)] hover:shadow-[0_12px_25px_rgb(79,70,229,0.35)] transition-all duration-300 disabled:opacity-70 text-sm"
           >
-            {isLoading ? <><Loader2 size={18} className="animate-spin" /> Menyimpan Tiket...</> : <><Save size={18} /> Simpan & Distribusikan Tugas</>}
+            {isLoading ? <><Loader2 size={18} className="animate-spin" /> Menyimpan Tiket & Mengirim Notif...</> : <><Save size={18} /> Simpan & Beri Notif WA ke PIC</>}
           </motion.button>
         </div>
       </motion.form>
