@@ -1,24 +1,28 @@
+// src/app/(dashboard)/layout.tsx
 import React from 'react';
 import { Toaster } from 'react-hot-toast';
 import SidebarNav from './SidebarNav'; 
+import { cookies } from 'next/headers';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Ambil data session dari cookies
+  const cookieStore = await cookies();
+  const sessionStr = cookieStore.get('user_session')?.value;
+  const user = sessionStr ? JSON.parse(sessionStr) : { name: 'Guest', role: 'UNKNOWN' };
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 w-full overflow-x-hidden">
-      {/* Sidebar (Desktop) & Bottom Nav (Mobile) */}
-      <SidebarNav />
+      {/* Lempar data user ke Sidebar */}
+      <SidebarNav userName={user.name} userRole={user.role} />
       
-      {/* Konten Halaman */}
-      {/* pb-28 di mobile agar konten tidak tertutup oleh bottom navigation */}
       <main className="flex-1 w-full max-w-full p-4 md:p-10 overflow-y-auto pb-28 md:pb-10">
         {children}
       </main>
 
-      {/* Pop-up Global Toast */}
       <Toaster position="top-center" reverseOrder={false} />
     </div>
   );

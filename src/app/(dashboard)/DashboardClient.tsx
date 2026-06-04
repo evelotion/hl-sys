@@ -1,8 +1,9 @@
+// hl-sys/src/app/(dashboard)/DashboardClient.tsx
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags } from 'lucide-react';
 
 interface PICWorkload {
   name: string;
@@ -10,8 +11,20 @@ interface PICWorkload {
   completed: number;
 }
 
+interface TicketData {
+  id: string;
+  status: string;
+  progress: number;
+  sla: number;
+  pic: string;
+  title?: string;
+  category?: string;
+  cabang?: string;
+  date?: string;
+}
+
 export default function DashboardClient({ 
-  totalRequest, onProgress, completed, slaOnTime, picWorkload, userRole
+  totalRequest, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName
 }: {
   totalRequest: number;
   onProgress: number;
@@ -19,6 +32,8 @@ export default function DashboardClient({
   slaOnTime: number;
   picWorkload: PICWorkload[];
   userRole: string; 
+  recentTickets: TicketData[]; 
+  userName: string; // <--- PROPS BARU
 }) {
   
   const safeTotal = totalRequest === 0 ? 1 : totalRequest;
@@ -29,12 +44,17 @@ export default function DashboardClient({
   const circumference = 2 * Math.PI * radius;
   const doneStroke = (donePercentage / 100) * circumference;
 
-  const recentTickets = [
-    { id: 'LOG-2026-0001', status: 'ON PROGRESS', progress: 45, sla: 35, pic: 'IND' },
-    { id: 'LOG-2026-0002', status: 'PROCESS', progress: 30, sla: 30, pic: 'IBL' },
-    { id: 'LOG-2026-0003', status: 'COMPLETED', progress: 100, sla: 100, pic: 'NOV' },
-    { id: 'LOG-2026-0004', status: 'ON PROGRESS', progress: 75, sla: 95, pic: 'MLK' },
-  ];
+  const latestTicket = recentTickets.length > 0 ? recentTickets[0] : null;
+
+  // Logika Waktu Sapaan (Dinamic)
+  const [greeting, setGreeting] = useState('Selamat Datang');
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 11) setGreeting('Selamat Pagi');
+    else if (hour < 15) setGreeting('Selamat Siang');
+    else if (hour < 18) setGreeting('Selamat Sore');
+    else setGreeting('Selamat Malam');
+  }, []);
 
   const getStatusColor = (status: string) => {
     if (status === 'COMPLETED') return 'text-emerald-600 bg-emerald-50 border-emerald-100';
@@ -48,12 +68,19 @@ export default function DashboardClient({
     return 'bg-blue-500';
   };
 
+  // Ambil nama depan saja untuk sapaan
+  const firstName = userName ? userName.split(' ')[0] : 'Guest';
+
   return (
     <div className="space-y-6 pb-10">
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
-        <h2 className="text-xl font-black text-slate-800 tracking-tight">MONITORING DASHBOARD</h2>
-      </div>
+      
+      {/* GREETING SECTION */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">
+          {greeting}, <span className="text-indigo-600">{firstName}</span>! 👋
+        </h1>
+        <p className="text-slate-500 mt-1 font-medium text-xs md:text-sm">Berikut adalah ringkasan performa sistem logistik hari ini.</p>
+      </motion.div>
 
       {/* 1. KPI Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -65,7 +92,6 @@ export default function DashboardClient({
           </div>
           <div>
             <p className="text-3xl md:text-4xl font-black text-slate-800">{totalRequest}</p>
-            <p className="text-[9px] md:text-[10px] text-emerald-500 font-bold mt-1">+12% vs bulan lalu</p>
           </div>
         </div>
         {/* On Progress */}
@@ -76,7 +102,6 @@ export default function DashboardClient({
           </div>
           <div>
             <p className="text-3xl md:text-4xl font-black text-slate-800">{onProgress}</p>
-            <p className="text-[9px] md:text-[10px] text-emerald-500 font-bold mt-1">+8% vs bulan lalu</p>
           </div>
         </div>
         {/* Completed */}
@@ -87,7 +112,6 @@ export default function DashboardClient({
           </div>
           <div>
             <p className="text-3xl md:text-4xl font-black text-slate-800">{completed}</p>
-            <p className="text-[9px] md:text-[10px] text-emerald-500 font-bold mt-1">+15% vs bulan lalu</p>
           </div>
         </div>
         {/* SLA On Time */}
@@ -98,14 +122,12 @@ export default function DashboardClient({
           </div>
           <div>
             <p className="text-3xl md:text-4xl font-black text-slate-800">{slaOnTime}%</p>
-            <p className="text-[9px] md:text-[10px] text-emerald-500 font-bold mt-1">+3% vs bulan lalu</p>
           </div>
         </div>
       </div>
 
       {/* 2. Visual Monitoring (Cards di Mobile, Table di Desktop) */}
       <div className="w-full">
-        {/* TITLE MOBILE SAJA */}
         <h3 className="text-sm font-bold text-slate-800 mb-3 md:hidden">Tiket Berjalan</h3>
         
         {/* MOBILE VIEW (CARD) */}
@@ -145,10 +167,13 @@ export default function DashboardClient({
               </div>
             </div>
           ))}
+          {recentTickets.length === 0 && (
+            <div className="text-center p-6 text-slate-400 font-medium text-xs border border-dashed rounded-xl">Belum ada tugas aktif</div>
+          )}
         </div>
 
         {/* DESKTOP VIEW (TABLE) */}
-        <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
           <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[800px]">
               <thead className="bg-slate-50 border-b border-slate-100">
@@ -175,9 +200,9 @@ export default function DashboardClient({
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3 w-full">
                         <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${ticket.sla}%` }} transition={{ duration: 1, delay: 0.2 }} className="h-full rounded-full bg-indigo-500"></motion.div>
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${ticket.sla}%` }} transition={{ duration: 1, delay: 0.2 }} className={`h-full rounded-full ${ticket.sla === 100 && ticket.status !== 'COMPLETED' ? 'bg-red-500' : 'bg-indigo-500'}`}></motion.div>
                         </div>
-                        <span className="text-[10px] font-bold text-slate-500 w-8">{ticket.sla}%</span>
+                        <span className={`text-[10px] font-bold w-8 ${ticket.sla === 100 && ticket.status !== 'COMPLETED' ? 'text-red-500' : 'text-slate-500'}`}>{ticket.sla}%</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -191,6 +216,11 @@ export default function DashboardClient({
                     </td>
                   </tr>
                 ))}
+                {recentTickets.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="text-center p-8 text-slate-400 font-medium text-xs">Belum ada tugas aktif</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -198,36 +228,60 @@ export default function DashboardClient({
       </div>
 
       {/* 3. Barisan Bawah */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* SLA Timeline Stepper */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-8">SLA Timeline</h3>
-          {/* Scrollable container untuk HP biar bulatannya ga penyok */}
-          <div className="w-full overflow-x-auto pb-4 no-scrollbar">
-            <div className="flex items-center justify-between relative px-2 min-w-[400px]">
-              <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -translate-y-1/2 z-0"></div>
-              <motion.div initial={{ width: 0 }} animate={{ width: '60%' }} transition={{ duration: 1.5 }} className="absolute top-1/2 left-0 h-1 bg-indigo-500 -translate-y-1/2 z-0"></motion.div>
-              {['Request Masuk', 'Verifikasi', 'Proses', 'Monitoring', 'Selesai'].map((step, idx) => {
-                const isPassed = idx <= 2;
-                const isCurrent = idx === 2;
-                return (
-                  <div key={idx} className="relative z-10 flex flex-col items-center gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${isPassed ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white border-slate-300'}`}>
-                      {isPassed && idx !== 4 && <div className="w-2 h-2 bg-white rounded-full"></div>}
-                      {idx === 4 && <CheckCircle2 size={14} className={isPassed ? 'text-white' : 'text-slate-300'} />}
-                    </div>
-                    <span className={`text-[10px] font-bold ${isCurrent ? 'text-indigo-600' : 'text-slate-500'} absolute top-8 whitespace-nowrap`}>{step}</span>
-                  </div>
-                );
-              })}
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
+        {/* LATEST TICKET CARD */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tiket Terbaru Masuk</h3>
+            {latestTicket && (
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
+              </span>
+            )}
           </div>
+          
+          {latestTicket ? (
+            <div className="flex-1 flex flex-col justify-center">
+               <div className="bg-gradient-to-br from-indigo-50/50 to-white border border-indigo-100 p-5 rounded-2xl h-full flex flex-col justify-between">
+                 <div>
+                   <div className="flex justify-between items-start gap-3 mb-3">
+                     <span className="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-lg">{latestTicket.id}</span>
+                     <span className="text-[10px] text-slate-500 font-bold">{latestTicket.date}</span>
+                   </div>
+                   <h4 className="text-sm font-bold text-slate-800 line-clamp-2 leading-snug mb-4">
+                     {latestTicket.title}
+                   </h4>
+                   <div className="flex items-center gap-2 flex-wrap">
+                     <span className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-md flex items-center gap-1"><Tags size={10} /> {latestTicket.category}</span>
+                     <span className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-md flex items-center gap-1">📍 {latestTicket.cabang}</span>
+                   </div>
+                 </div>
+                 
+                 {/* Progress Bar Info */}
+                 <div className="mt-4 pt-4 border-t border-indigo-100/50">
+                   <div className="flex justify-between items-center mb-1.5">
+                     <span className="text-[10px] font-bold text-slate-500">Status & SLA Saat Ini</span>
+                     <span className={`px-2 py-0.5 text-[9px] font-black rounded-md border ${getStatusColor(latestTicket.status)}`}>{latestTicket.status}</span>
+                   </div>
+                   <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                     <motion.div initial={{ width: 0 }} animate={{ width: `${latestTicket.progress}%` }} className={`h-full ${getBarColor(latestTicket.status)}`}></motion.div>
+                     <motion.div initial={{ width: 0 }} animate={{ width: `${latestTicket.sla}%` }} className="h-full bg-indigo-200 opacity-50"></motion.div>
+                   </div>
+                 </div>
+               </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center border-2 border-dashed border-slate-100 rounded-2xl p-6">
+               <span className="text-xs font-medium text-slate-400">Belum ada tiket baru masuk.</span>
+            </div>
+          )}
         </div>
 
         {/* Completion Tracking Chart */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 md:mb-2">Completion Tracking</h3>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-8">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-8 flex-1">
             <div className="relative w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
               <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                 <circle cx="50" cy="50" r={radius} fill="none" stroke="#f1f5f9" strokeWidth="14" />
@@ -258,7 +312,7 @@ export default function DashboardClient({
 
       {/* 4. Dropdown Beban Kerja PIC */}
       {userRole !== 'PIC_LOGISTIK' && (
-        <details className="group bg-white rounded-2xl border border-slate-200 shadow-sm marker:content-['']">
+        <details className="group bg-white rounded-2xl border border-slate-200 shadow-sm marker:content-[''] mt-4">
           <summary className="flex items-center justify-between p-4 md:p-5 cursor-pointer list-none outline-none">
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
