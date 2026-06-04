@@ -162,7 +162,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
           <ArrowLeft size={16} /> Kembali
         </button>
         <h2 className="text-2xl font-black text-slate-800 tracking-tight">Buat Tiket Baru</h2>
-        <p className="text-slate-500 mt-1 font-medium text-xs">Pusat penugasan Dapur Internal Logistik & Alih Daya.</p>
+        <p className="text-slate-500 mt-1 font-medium text-xs">Pusat penugasan Internal Departemen Logistik.</p>
       </motion.div>
 
       <motion.form
