@@ -1,7 +1,7 @@
 // hl-sys/src/app/(auth)/login/page.tsx
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,16 @@ export default function LoginPage() {
   // State input
   const [nip, setNip] = useState('');
   const [password, setPassword] = useState('');
+
+  // Otomatis isi form kalau ada parameter nip dan pwd di URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nipParam = params.get('nip');
+    const pwdParam = params.get('pwd');
+
+    if (nipParam) setNip(nipParam);
+    if (pwdParam) setPassword(pwdParam);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

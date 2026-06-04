@@ -116,8 +116,14 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
           const ticketNum = data.ticket?.ticketNumber || 'Terbaru';
           
+          // --- PENAMBAHAN GENERATE LINK AUTO LOGIN (LANGKAH 2) ---
+          const baseUrl = window.location.origin; 
+          const defaultPassword = 'password123'; // <-- Ubah ke password default asli kalau beda
+          const loginLink = `${baseUrl}/login?nip=${selectedPic.initial}&pwd=${defaultPassword}`;
+          
           // Template Pesan WA (Gunakan \n untuk baris baru)
-          const waText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticketNum}\n*Kategori:* ${formData.category}\n*Cabang/Unit:* ${formData.branchName}\n*Pemohon:* ${formData.requesterName}\n*Perihal:* ${titleReal}\n\nSegera login ke sistem *HL-SYS* untuk melihat detail pekerjaan dan klik mulai proses (In Progress) ya!\n\nSemangat! 💪`;
+          const waText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticketNum}\n*Kategori:* ${formData.category}\n*Cabang/Unit:* ${formData.branchName}\n*Pemohon:* ${formData.requesterName}\n*Perihal:* ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses (In Progress) melalui link login otomatis berikut:\n${loginLink}\n\nSemangat! 💪`;
+          // -------------------------------------------------------
 
           const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`;
           
