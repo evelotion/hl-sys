@@ -20,8 +20,11 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Bikin helper buat dapetin tanggal YYYY-MM-DD lokal hari ini
+  const todayLocal = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
   const [formData, setFormData] = useState({
-    requestDate: '',
+    requestDate: todayLocal, // <-- Set default langsung hari ini
     mediaRequest: 'Lisan / Verbal',
     branchName: '',
     requesterName: '', // Pastikan ini tetap ada
@@ -155,7 +158,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
           <ArrowLeft size={16} /> Kembali
         </button>
         <h2 className="text-2xl font-black text-slate-800 tracking-tight">Buat Tiket Baru</h2>
-        <p className="text-slate-500 mt-1 font-medium text-xs">Pusat penugasan Dapur Internal Logistik & Alih Daya.</p>
+        <p className="text-slate-500 mt-1 font-medium text-xs">Pusat penugasan internal Departemen Logistik.</p>
       </motion.div>
 
       <motion.form
@@ -166,7 +169,12 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Tanggal Permintaan</label>
-            <input required type="date" value={formData.requestDate} onChange={(e) => setFormData({ ...formData, requestDate: e.target.value })}
+            <input 
+              required 
+              type="date" 
+              max={todayLocal} // <-- Tambahan batas max di sini
+              value={formData.requestDate} 
+              onChange={(e) => setFormData({ ...formData, requestDate: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
             />
           </div>

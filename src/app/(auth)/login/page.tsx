@@ -65,7 +65,7 @@ export default function LoginPage() {
               <Lock size={24} strokeWidth={2.5} />
             </motion.div>
             <h1 className="text-2xl font-black text-slate-800 tracking-tight">HL-SYS</h1>
-            <p className="text-slate-400 font-bold mt-1 text-[10px] uppercase tracking-[0.2em]">Departement Logistic</p>
+            <p className="text-slate-400 font-bold mt-1 text-[10px] uppercase tracking-[0.2em]">Departemen Logistik</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">

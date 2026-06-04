@@ -20,6 +20,9 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
   const [comment, setComment] = useState('');
   const [isCommenting, setIsCommenting] = useState(false);
 
+  // Helper untuk mendapatkan tanggal lokal hari ini (menghindari bug UTC)
+  const todayLocal = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
   // State untuk form edit pakai Optional Chaining (?.) biar anti-crash
   const [editForm, setEditForm] = useState({
     title: ticket?.title || '',
@@ -266,6 +269,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                   <input 
                     type="date" 
                     required 
+                    max={todayLocal} // <--- Tambahan limit max disini
                     value={editForm.requestDate} 
                     onChange={(e) => setEditForm({ ...editForm, requestDate: e.target.value })} 
                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300" 
