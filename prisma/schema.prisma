@@ -12,6 +12,7 @@ model User {
   initial   String   @unique 
   name      String
   phone     String?  
+  email     String?  // <-- TAMBAHIN BARIS INI BRO BUAT MS TEAMS
   role      Role     @default(PIC_LOGISTIK)
   tasks     Ticket[] @relation("PICTasks")
   createdAt DateTime @default(now())
@@ -19,24 +20,24 @@ model User {
 }
 
 model Ticket {
-  id           String    @id @default(uuid())
-  ticketNumber String    @unique
-  title        String    
-  description  String
-  category     String    @default("Umum")
-  status       Status    @default(OPEN)
-  issueImgUrl  String?
-  proofImgUrl  String?
-  branchName   String
-  requesterName String?  // <-- TAMBAHIN BARIS INI BRO
-  mediaRequest String?   
-  requestDate  DateTime? 
-  slaDeadline  DateTime?
-  picId        String?
-  pic          User?     @relation("PICTasks", fields: [picId], references: [id])
-  createdAt    DateTime  @default(now())
-  resolvedAt   DateTime?
-  logs         ActivityLog[]
+  id            String    @id @default(uuid())
+  ticketNumber  String    @unique
+  title         String    
+  description   String
+  category      String    @default("Umum")
+  status        Status    @default(OPEN)
+  issueImgUrl   String?
+  proofImgUrl   String?
+  branchName    String
+  requesterName String?
+  mediaRequest  String?   
+  requestDate   DateTime? 
+  slaDeadline   DateTime?
+  picId         String?
+  pic           User?     @relation("PICTasks", fields: [picId], references: [id])
+  createdAt     DateTime  @default(now())
+  resolvedAt    DateTime?
+  logs          ActivityLog[]
 }
 
 model ActivityLog {
