@@ -1,21 +1,36 @@
 // hl-sys/src/app/(dashboard)/SidebarNav.tsx
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Ticket, Package } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LayoutDashboard, Ticket, Package, LogOut, Loader2 } from 'lucide-react'; // <-- Tambahan icon LogOut & Loader2
 
 export default function SidebarNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Semua Tiket', href: '/tickets', icon: Ticket },
   ];
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      if (res.ok) {
+        router.push('/login');
+        router.refresh();
+      }
+    } catch (error) {
+      console.error("Gagal logout:", error);
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
-    // Wrapper luar pakai lebar pasti (w-64/w-72), flex-shrink-0 (biar ga melar), dan glassmorphism
     <aside className="w-64 md:w-72 flex-shrink-0 h-screen sticky top-0 flex flex-col bg-white/80 backdrop-blur-2xl border-r border-slate-200/60 shadow-[4px_0_32px_rgba(0,0,0,0.02)] z-40 transition-all duration-300">
       
       {/* Header / Logo App */}
@@ -31,7 +46,7 @@ export default function SidebarNav() {
         </div>
       </div>
 
-      {/* Menu Navigasi */}
+      {/* Menu Navigasi Utama */}
       <nav className="flex-1 px-4 space-y-1.5 mt-6">
         {navItems.map((item) => {
           const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
@@ -47,7 +62,6 @@ export default function SidebarNav() {
                   : 'text-slate-500 font-semibold border border-transparent hover:bg-slate-50 hover:text-slate-800'
               }`}
             >
-              {/* Garis penanda aktif di sebelah kiri */}
               {isActive && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-indigo-600 rounded-r-full"></div>
               )}
@@ -61,6 +75,23 @@ export default function SidebarNav() {
           );
         })}
       </nav>
+
+      {/* Footer / Tombol Logout */}
+      <div className="p-4 border-t border-slate-100/50">
+        <button 
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 font-semibold hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors group disabled:opacity-70"
+        >
+          {isLoggingOut ? (
+            <Loader2 size={18} className="animate-spin text-red-500" />
+          ) : (
+            <LogOut size={18} className="text-slate-400 group-hover:text-red-500 transition-colors" />
+          )}
+          <span>{isLoggingOut ? 'Keluar...' : 'Keluar Sistem'}</span>
+        </button>
+      </div>
+
     </aside>
   );
 }
