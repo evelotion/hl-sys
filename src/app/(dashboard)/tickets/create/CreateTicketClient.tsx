@@ -1,4 +1,3 @@
-// hl-sys/src/app/(dashboard)/tickets/create/CreateTicketClient.tsx
 "use client";
 
 import React, { useState } from 'react';
@@ -14,9 +13,9 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
 
   const [formData, setFormData] = useState({
     requestDate: '',
-    mediaRequest: 'Telepon',
+    mediaRequest: 'Lisan / Verbal', // <-- Default diganti
     branchName: '',
-    requesterName: '', // <-- State baru buat nangkep nama
+    requesterName: '', 
     category: '',
     picId: '',
     title: '', 
@@ -24,9 +23,10 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
     issueImgUrl: ''
   });
 
+  // Pastikan inisial Bu Anne (misal 'AND' atau 'ANN') TIDAK ADA di dalam array ini biar nggak muncul di dropdown
   const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL'];
   const pembayaranInitials = ['RIN', 'ETK', 'RKS', 'RLY'];
-  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS']; 
+  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'IDH', 'RML', 'HEN', 'MWS']; 
 
   const filteredPics = pics.filter(pic => {
     if (formData.category === 'P3') return p3Initials.includes(pic.initial);
@@ -62,10 +62,18 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // VALIDASI WAJIB UPLOAD JIKA BUKAN LISAN
+    if (formData.mediaRequest !== 'Lisan / Verbal' && !formData.issueImgUrl) {
+      alert("⚠️ File pendukung WAJIB di-upload jika media request bukan Lisan / Verbal!");
+      return;
+    }
+
     if (!formData.category || !formData.picId) {
       alert("Pilih Kategori dan PIC terlebih dahulu!");
       return;
     }
+
     setIsLoading(true);
     try {
       const res = await fetch('/api/tickets', {
@@ -90,7 +98,7 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
         <button onClick={() => router.back()} className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition-colors font-bold text-sm mb-4">
           <ArrowLeft size={16} /> Kembali
         </button>
-        <h2 className="text-2xl font-black text-slate-800 tracking-tight">Buat Tiket Request</h2>
+        <h2 className="text-2xl font-black text-slate-800 tracking-tight">Buat Tiket Baru</h2>
         <p className="text-slate-500 mt-1 font-medium text-xs">Pusat penugasan Dapur Internal Logistik & Alih Daya.</p>
       </motion.div>
 
@@ -100,7 +108,6 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
         className="bg-white p-6 md:p-8 rounded-[24px] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-6"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* 1. Tanggal Permintaan */}
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Tanggal Permintaan</label>
             <input required type="date" value={formData.requestDate} onChange={(e) => setFormData({ ...formData, requestDate: e.target.value })}
@@ -108,36 +115,32 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
             />
           </div>
 
-          {/* 2. Media Request */}
           <div className="space-y-2">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Media Request</label>
-            <select value={formData.mediaRequest} onChange={(e) => setFormData({ ...formData, mediaRequest: e.target.value, issueImgUrl: e.target.value === 'Telepon' ? '' : formData.issueImgUrl })}
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Landasan Permintaan (Media)</label>
+            <select value={formData.mediaRequest} onChange={(e) => setFormData({ ...formData, mediaRequest: e.target.value, issueImgUrl: e.target.value === 'Lisan / Verbal' ? '' : formData.issueImgUrl })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
             >
-              <option value="Telepon">Telepon</option>
+              {/* Diubah jadi Lisan / Verbal */}
+              <option value="Lisan / Verbal">Lisan / Verbal</option>
               <option value="Email">Email</option>
-              <option value="Teams">Teams</option>
-              <option value="Memo/Form Fisik">Memo/Form Fisik</option>
+              <option value="Memo / Form Fisik">Memo / Form Fisik</option>
             </select>
           </div>
 
-          {/* 3. Nama Cabang/Unit */}
           <div className="space-y-2">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Cabang / Unit Pengaju</label>
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Cabang / Unit Pemohon</label>
             <input required type="text" placeholder="Contoh: KCP Depok" value={formData.branchName} onChange={(e) => setFormData({ ...formData, branchName: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
             />
           </div>
 
-          {/* TAMBAHAN BARU: Nama Requester */}
           <div className="space-y-2">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Nama Requester</label>
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Nama Pemohon</label>
             <input required type="text" placeholder="Contoh: Budi Santoso" value={formData.requesterName} onChange={(e) => setFormData({ ...formData, requesterName: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
             />
           </div>
 
-          {/* 4. Kategori & Delegasi PIC */}
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Kategori Tugas</label>
             <select required value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value, picId: '' })}
@@ -151,7 +154,6 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
           </div>
         </div>
 
-        {/* Dropdown PIC Dinamis Muncul Kalau Kategori Sudah Dipilih */}
         <AnimatePresence>
           {formData.category && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-2 overflow-hidden">
@@ -168,32 +170,30 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
           )}
         </AnimatePresence>
 
-        {/* 5. Perihal (Dulu Judul) */}
         <div className="space-y-2 border-t border-slate-100 pt-6">
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Perihal</label>
-          <input required type="text" placeholder="Contoh: Permintaan Cetak Form Mutasi" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          <input required minLength={5} type="text" placeholder="Contoh: Permintaan Cetak Form Mutasi (Min 5 Karakter)" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
           />
         </div>
 
-        {/* 6. Deskripsi Lengkap */}
         <div className="space-y-2">
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Deskripsi Lengkap</label>
-          <textarea required rows={4} placeholder="Jelaskan detail request/permasalahan secara rinci..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          <textarea required minLength={10} rows={4} placeholder="Jelaskan detail request/permasalahan secara rinci... (Min 10 Karakter)" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700 resize-none"
           ></textarea>
         </div>
 
-        {/* 7. Upload Media (Beku jika Telepon) */}
-        <div className={`space-y-2 transition-opacity duration-300 ${formData.mediaRequest === 'Telepon' ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+        {/* Tanda Bintang Merah kalau media bukan Lisan */}
+        <div className={`space-y-2 transition-opacity duration-300 ${formData.mediaRequest === 'Lisan / Verbal' ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
-            <span>Upload File Pendukung (Memo/Email/Teams)</span>
-            {formData.mediaRequest === 'Telepon' && <span className="text-red-500">Dinonaktifkan untuk Telepon</span>}
+            <span>Upload File Pendukung {formData.mediaRequest !== 'Lisan / Verbal' && <span className="text-red-500">*WAJIB</span>}</span>
+            {formData.mediaRequest === 'Lisan / Verbal' && <span className="text-red-500">Dinonaktifkan untuk Lisan/Verbal</span>}
           </label>
           
           {!formData.issueImgUrl ? (
             <div className="relative">
-              <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading || formData.mediaRequest === 'Telepon'} className="hidden" id="upload-issue" />
+              <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading || formData.mediaRequest === 'Lisan / Verbal'} className="hidden" id="upload-issue" />
               <label htmlFor="upload-issue" className={`flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${
                   isUploading ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50'
                 }`}
@@ -204,7 +204,7 @@ export default function CreateTicketClient({ pics }: { pics: { id: string, name:
                   </motion.div>
                 ) : (
                   <div className="flex items-center gap-3 text-slate-500 font-semibold text-sm">
-                    <UploadCloud size={20} /> Klik untuk Unggah Bukti Fisik (Maks 1MB)
+                    <UploadCloud size={20} /> Klik untuk Unggah Bukti (Memo/Email)
                   </div>
                 )}
               </label>
