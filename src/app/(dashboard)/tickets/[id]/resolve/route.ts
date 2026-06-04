@@ -5,15 +5,16 @@ const prisma = new PrismaClient();
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  // 1. Ubah tipe params menjadi Promise
+  { params }: { params: Promise<{ id: string }> } 
 ) {
   try {
     const body = await request.json();
-    // Kita tetep tangkap variabel proofUrl dari body request (dari TaskViewClient)
     const { proofUrl } = body;
     
-    // ID aman sebagai string sesuai schema (UUID)
-    const ticketId = params.id; 
+    // 2. Await params-nya sebelum diambil id-nya
+    const resolvedParams = await params;
+    const ticketId = resolvedParams.id; 
 
     if (!proofUrl) {
       return NextResponse.json(
@@ -26,7 +27,6 @@ export async function POST(
       where: { id: ticketId },
       data: {
         status: 'DONE',       
-        // Masukin URL gambar ke kolom 'proofImgUrl' sesuai schema.prisma lo
         proofImgUrl: proofUrl,   
         resolvedAt: new Date(), 
       },
