@@ -9,17 +9,17 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Ambil data session dari cookies
   const cookieStore = await cookies();
   const sessionStr = cookieStore.get('user_session')?.value;
   const user = sessionStr ? JSON.parse(sessionStr) : { name: 'Guest', role: 'UNKNOWN' };
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 w-full overflow-x-hidden">
-      {/* Lempar data user ke Sidebar */}
+    // PERUBAHAN DI SINI: h-[100dvh] dan overflow-hidden
+    <div className="flex flex-col md:flex-row h-[100dvh] bg-slate-50 w-full overflow-hidden">
       <SidebarNav userName={user.name} userRole={user.role} />
       
-      <main className="flex-1 w-full max-w-full p-4 md:p-10 overflow-y-auto pb-28 md:pb-10">
+      {/* Bagian <main> ini yang akan mengambil sisa ruang dan punya scroll sendiri (overflow-y-auto) */}
+      <main className="flex-1 w-full max-w-full p-4 md:p-10 overflow-y-auto pb-28 md:pb-10 relative">
         {children}
       </main>
 

@@ -38,8 +38,7 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
       {/* =========================================
           DESKTOP SIDEBAR 
           ========================================= */}
-      <aside className="hidden md:flex w-64 md:w-72 flex-shrink-0 h-[100dvh] sticky top-0 flex-col bg-white/80 backdrop-blur-2xl border-r border-slate-200/60 shadow-[4px_0_32px_rgba(0,0,0,0.02)] z-40 transition-all duration-300">
-        
+      <aside className="hidden md:flex w-64 md:w-72 flex-shrink-0 h-full flex-col bg-white/80 backdrop-blur-2xl border-r border-slate-200/60 shadow-[4px_0_32px_rgba(0,0,0,0.02)] z-40 transition-all duration-300">  
         <div className="h-20 flex items-center px-8 border-b border-slate-100/50 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center shadow-[0_4px_12px_rgba(79,70,229,0.3)]">
