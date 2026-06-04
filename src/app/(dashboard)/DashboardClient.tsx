@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Clock, CheckCircle, AlertCircle, Inbox, ArrowUpRight, ChevronDown } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User } from 'lucide-react';
 
 interface PICWorkload {
   name: string;
@@ -22,209 +22,237 @@ export default function DashboardClient({
   userRole: string; 
 }) {
   
-  // Kalkulasi Persentase buat Chart & Progress Bar (Anti-NaN kalau total request 0)
+  // Kalkulasi Persentase untuk Chart
   const safeTotal = totalRequest === 0 ? 1 : totalRequest;
   const donePercentage = totalRequest === 0 ? 0 : Math.round((completed / safeTotal) * 100);
-  const pendingPercentage = totalRequest === 0 ? 0 : 100 - donePercentage;
+  const progressPercentage = totalRequest === 0 ? 0 : Math.round((onProgress / safeTotal) * 100);
 
   // Rumus Keliling Lingkaran SVG untuk Donut Chart
   const radius = 40;
   const circumference = 2 * Math.PI * radius;
   const doneStroke = (donePercentage / 100) * circumference;
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.08 } }
+  // Data Dummy untuk Tabel Progress (Bisa diganti dengan data asli dari database nanti)
+  const recentTickets = [
+    { id: 'LOG-2026-0001', status: 'ON PROGRESS', progress: 45, sla: 35, pic: 'IND' },
+    { id: 'LOG-2026-0002', status: 'PROCESS', progress: 30, sla: 30, pic: 'IBL' },
+    { id: 'LOG-2026-0003', status: 'COMPLETED', progress: 100, sla: 100, pic: 'NOV' },
+    { id: 'LOG-2026-0004', status: 'ON PROGRESS', progress: 75, sla: 95, pic: 'MLK' },
+  ];
+
+  const getStatusColor = (status: string) => {
+    if (status === 'COMPLETED') return 'text-emerald-600 bg-emerald-50';
+    if (status === 'ON PROGRESS') return 'text-amber-600 bg-amber-50';
+    return 'text-blue-600 bg-blue-50';
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, scale: 0.95, y: 10 },
-    show: { opacity: 1, scale: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 30 } }
+  const getBarColor = (status: string) => {
+    if (status === 'COMPLETED') return 'bg-emerald-500';
+    if (status === 'ON PROGRESS') return 'bg-amber-500';
+    return 'bg-blue-500';
   };
 
   return (
-    <div className="space-y-8">
-      <motion.header 
-        initial={{ opacity: 0, x: -20 }} 
-        animate={{ opacity: 1, x: 0 }} 
-        transition={{ duration: 0.5 }}
-        className="flex items-end justify-between border-b border-slate-200/60 pb-4"
-      >
-        <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Overview</h2>
-          <p className="text-slate-500 mt-1 font-medium text-xs">Sistem Terpadu Logistik & Alih Daya</p>
-        </div>
-        <div className="hidden md:flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          System Online
-        </div>
-      </motion.header>
+    <div className="space-y-6 pb-10">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
+        <h2 className="text-xl font-black text-slate-800 tracking-tight">MONITORING DASHBOARD</h2>
+      </div>
 
-      {/* Bento Grid Layout - Ditambah Visual Chart */}
-      <motion.div 
-        variants={containerVariants} 
-        initial="hidden" 
-        animate="show"
-        className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-5"
-      >
-        {/* Main Big KPI + Animated Progress Bar */}
-        <motion.div 
-          variants={itemVariants}
-          className="md:col-span-2 lg:col-span-4 bg-white/90 backdrop-blur-xl p-6 rounded-[24px] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] transition-all duration-300 relative overflow-hidden group flex flex-col justify-between"
-        >
+      {/* 1. Barisan 4 KPI Sejajar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Total Request */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-slate-500 mb-3">
+            <FileText size={18} className="text-indigo-500" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Total Request</span>
+          </div>
           <div>
-            <div className="flex justify-between items-start mb-6">
-              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100/50 group-hover:scale-110 transition-transform duration-300">
-                <Inbox size={20} />
-              </div>
-              <ArrowUpRight size={18} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
-            </div>
-            <div>
-              <p className="text-5xl font-black text-slate-800 tracking-tighter">{totalRequest}</p>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Total Request</p>
-            </div>
+            <p className="text-4xl font-black text-slate-800">{totalRequest}</p>
+            <p className="text-[10px] text-emerald-500 font-bold mt-1">+12% vs bulan lalu</p>
           </div>
-          
-          {/* Animated Linear Progress Bar */}
-          <div className="mt-6 pt-5 border-t border-slate-100/60">
-            <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-2">
-              <span>Penyelesaian Keseluruhan</span>
-              <span className="text-indigo-600">{donePercentage}%</span>
-            </div>
-            <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden shadow-inner">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${donePercentage}%` }}
-                transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
-                className="bg-gradient-to-r from-indigo-400 to-indigo-600 h-full rounded-full relative"
-              >
-                <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse"></div>
-              </motion.div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Medium KPI + SVG Donut/Pie Chart */}
-        <motion.div 
-          variants={itemVariants}
-          className="md:col-span-2 lg:col-span-4 bg-white/90 backdrop-blur-xl p-6 rounded-[24px] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] transition-all duration-300 relative overflow-hidden group"
-        >
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100/50 inline-block group-hover:scale-110 transition-transform duration-300 mb-4">
-                <CheckCircle size={20} />
-              </div>
-              <p className="text-5xl font-black text-slate-800 tracking-tighter">{completed}</p>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Tugas Selesai</p>
-            </div>
-
-            {/* Custom SVG Donut Chart */}
-            <div className="relative w-28 h-28 flex-shrink-0 drop-shadow-sm">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                {/* Background Circle (Pending/Amber) */}
-                <circle cx="50" cy="50" r={radius} fill="none" stroke="#fef3c7" strokeWidth="12" />
-                {/* Foreground Circle (Done/Emerald) */}
-                <motion.circle 
-                  cx="50" cy="50" r={radius} fill="none" stroke="#10b981" strokeWidth="12"
-                  strokeLinecap="round"
-                  strokeDasharray={circumference}
-                  initial={{ strokeDashoffset: circumference }}
-                  animate={{ strokeDashoffset: circumference - doneStroke }}
-                  transition={{ duration: 1.5, ease: "easeOut", delay: 0.3 }}
-                />
-              </svg>
-              {/* Text Inside Donut */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl font-black text-slate-700">{donePercentage}%</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Legend Chart */}
-          <div className="flex gap-4 pt-4 border-t border-slate-100/60 mt-1">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span> {donePercentage}% Selesai
-            </div>
-            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-200 shadow-sm"></span> {pendingPercentage}% Pending
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Small KPIs stacked */}
-        <div className="md:col-span-4 lg:col-span-4 grid grid-rows-2 gap-5">
-          <motion.div 
-            variants={itemVariants}
-            className="bg-white/90 backdrop-blur-xl p-5 rounded-[20px] border border-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex items-center justify-between group transition-all"
-          >
-            <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Sedang Diproses</p>
-              <p className="text-2xl font-black text-slate-800">{onProgress}</p>
-            </div>
-            <div className="p-2.5 bg-amber-50 text-amber-500 rounded-xl border border-amber-100/50 group-hover:scale-110 transition-transform">
-              <Activity size={20} />
-            </div>
-          </motion.div>
-
-          <motion.div 
-            variants={itemVariants}
-            className="bg-white/90 backdrop-blur-xl p-5 rounded-[20px] border border-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex items-center justify-between group transition-all"
-          >
-            <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">SLA Ketepatan Waktu</p>
-              <p className="text-2xl font-black text-slate-800">{slaOnTime}%</p>
-            </div>
-            <div className="p-2.5 bg-blue-50 text-blue-500 rounded-xl border border-blue-100/50 group-hover:scale-110 transition-transform">
-              <Clock size={20} />
-            </div>
-          </motion.div>
         </div>
-      </motion.div>
 
-      {/* Workload Section - Dropdown / Accordion */}
-      {userRole !== 'PIC_LOGISTIK' && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="bg-white/80 backdrop-blur-2xl p-6 md:p-8 rounded-[24px] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
-        >
-          <details className="group marker:content-['']">
-            <summary className="flex items-center justify-between cursor-pointer list-none outline-none">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.6)]"></div>
-                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-widest">Detail Beban Kerja PIC</h3>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center border border-slate-200 group-open:rotate-180 transition-all duration-500 shadow-sm">
-                <ChevronDown size={16} className="text-slate-500" />
-              </div>
-            </summary>
-            
-            <div className="pt-6 mt-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-4 fade-in duration-500">
-              {picWorkload.map((pic, idx) => (
-                <motion.div 
-                  key={idx}
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  className="flex justify-between items-center p-4 bg-white/60 backdrop-blur-md rounded-xl border border-white shadow-sm hover:shadow-[0_8px_20px_rgb(0,0,0,0.04)] transition-all duration-300"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200/50 flex items-center justify-center text-indigo-700 font-black text-sm shadow-inner">
-                      {pic.name.charAt(0)}
+        {/* On Progress */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-slate-500 mb-3">
+            <Clock size={18} className="text-blue-500" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">On Progress</span>
+          </div>
+          <div>
+            <p className="text-4xl font-black text-slate-800">{onProgress}</p>
+            <p className="text-[10px] text-emerald-500 font-bold mt-1">+8% vs bulan lalu</p>
+          </div>
+        </div>
+
+        {/* Completed */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-slate-500 mb-3">
+            <CheckCircle2 size={18} className="text-emerald-500" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Completed</span>
+          </div>
+          <div>
+            <p className="text-4xl font-black text-slate-800">{completed}</p>
+            <p className="text-[10px] text-emerald-500 font-bold mt-1">+15% vs bulan lalu</p>
+          </div>
+        </div>
+
+        {/* SLA On Time */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-slate-500 mb-3">
+            <Timer size={18} className="text-indigo-600" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">SLA On Time</span>
+          </div>
+          <div>
+            <p className="text-4xl font-black text-slate-800">{slaOnTime}%</p>
+            <p className="text-[10px] text-emerald-500 font-bold mt-1">+3% vs bulan lalu</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Tabel Visual Monitoring */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[800px]">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">No. Request</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status Progress</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">SLA Timeline</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">PIC Assignment</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {recentTickets.map((ticket, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-6 py-4 text-xs font-bold text-slate-700">{ticket.id}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3 w-full">
+                      <span className={`px-2 py-1 text-[9px] font-black rounded w-24 text-center ${getStatusColor(ticket.status)}`}>
+                        {ticket.status}
+                      </span>
+                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${ticket.progress}%` }} transition={{ duration: 1 }} className={`h-full rounded-full ${getBarColor(ticket.status)}`}></motion.div>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-500 w-8">{ticket.progress}%</span>
                     </div>
-                    <span className="font-bold text-slate-700 text-sm">{pic.name}</span>
-                  </div>
-                  <div className="flex gap-2 text-[10px]">
-                    <span className="text-slate-600 bg-white/80 px-3 py-1.5 rounded-lg font-bold border border-slate-200/60 shadow-sm">{pic.activeTasks} Antrean</span>
-                    <span className="text-emerald-700 bg-emerald-50/80 px-3 py-1.5 rounded-lg font-bold border border-emerald-100/60 shadow-sm">{pic.completed} Selesai</span>
-                  </div>
-                </motion.div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${ticket.sla}%` }} transition={{ duration: 1, delay: 0.2 }} className="h-full rounded-full bg-indigo-500"></motion.div>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-500 w-8">{ticket.sla}%</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="text-xs font-bold text-slate-600">PIC {ticket.pic}</span>
+                      <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center border border-emerald-200 relative">
+                        <User size={12} />
+                        <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border border-white"></span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 3. Barisan Bawah (Timeline & Chart) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* SLA Timeline Stepper */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-8">SLA Timeline</h3>
+          <div className="flex items-center justify-between relative px-2">
+            {/* Garis background */}
+            <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -translate-y-1/2 z-0"></div>
+            {/* Garis progress (Misal sampai ke tahap 3) */}
+            <motion.div initial={{ width: 0 }} animate={{ width: '60%' }} transition={{ duration: 1.5 }} className="absolute top-1/2 left-0 h-1 bg-indigo-500 -translate-y-1/2 z-0"></motion.div>
+            
+            {['Request Masuk', 'Verifikasi', 'Proses', 'Monitoring', 'Selesai'].map((step, idx) => {
+              const isPassed = idx <= 2; // Simulasi: Tahap 0,1,2 udah lewat
+              const isCurrent = idx === 2;
+              return (
+                <div key={idx} className="relative z-10 flex flex-col items-center gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${isPassed ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white border-slate-300'}`}>
+                    {isPassed && idx !== 4 && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                    {idx === 4 && <CheckCircle2 size={14} className={isPassed ? 'text-white' : 'text-slate-300'} />}
+                  </div>
+                  <span className={`text-[10px] font-bold ${isCurrent ? 'text-indigo-600' : 'text-slate-500'} absolute top-8 whitespace-nowrap`}>{step}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Completion Tracking Chart */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Completion Tracking</h3>
+          <div className="flex items-center justify-center gap-8">
+            {/* Donut Chart */}
+            <div className="relative w-32 h-32 flex-shrink-0">
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                <circle cx="50" cy="50" r={radius} fill="none" stroke="#f1f5f9" strokeWidth="14" />
+                <motion.circle cx="50" cy="50" r={radius} fill="none" stroke="#10b981" strokeWidth="14" strokeDasharray={circumference} initial={{ strokeDashoffset: circumference }} animate={{ strokeDashoffset: circumference - doneStroke }} transition={{ duration: 1.5, ease: "easeOut" }} />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-black text-slate-800 leading-none">{completed}</span>
+                <span className="text-[10px] font-bold text-slate-500">Selesai</span>
+              </div>
             </div>
-          </details>
-        </motion.div>
+
+            {/* Legend */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                <span className="text-xs font-bold text-slate-600">Completed ({donePercentage}%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                <span className="text-xs font-bold text-slate-600">On Progress ({progressPercentage}%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                <span className="text-xs font-bold text-slate-600">Process</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Dropdown Beban Kerja PIC (Tetap Dipertahankan untuk Bu Anne) */}
+      {userRole !== 'PIC_LOGISTIK' && (
+        <details className="group bg-white rounded-2xl border border-slate-200 shadow-sm marker:content-['']">
+          <summary className="flex items-center justify-between p-5 cursor-pointer list-none outline-none">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Detail Beban Kerja PIC</h3>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center border border-slate-200 group-open:rotate-180 transition-all">
+              <ChevronDown size={16} className="text-slate-500" />
+            </div>
+          </summary>
+          
+          <div className="p-5 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {picWorkload.map((pic, idx) => (
+              <div key={idx} className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-xs">
+                    {pic.name.charAt(0)}
+                  </div>
+                  <span className="font-bold text-slate-700 text-xs">{pic.name}</span>
+                </div>
+                <div className="flex gap-2 text-[10px]">
+                  <span className="text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">{pic.activeTasks} Antrean</span>
+                  <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">{pic.completed} Selesai</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   );
