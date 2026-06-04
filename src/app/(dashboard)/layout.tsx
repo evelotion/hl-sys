@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { LayoutDashboard, Ticket, LogOut } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { Toaster } from 'react-hot-toast';
 
 export default async function DashboardLayout({
   children,

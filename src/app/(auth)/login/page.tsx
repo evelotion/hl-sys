@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Lock, User, ArrowRight, Loader2, AlertCircle } from 'lucide-react'; // <-- Icon Mail gue ganti jadi User biar pas dengan Inisial
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -9,8 +9,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
   
-  // State input
-  const [nip, setNip] = useState('');
+  // State input: nip diubah jadi initial
+  const [initial, setInitial] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -22,7 +22,8 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nip, password })
+        // Kirim initial ke backend, bukan nip
+        body: JSON.stringify({ initial, password }) 
       });
       
       if (res.ok) {
@@ -66,11 +67,11 @@ export default function LoginPage() {
 
             <div className="space-y-1.5">
               <div className="relative group">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors duration-300" size={16} />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors duration-300" size={16} />
                 <input 
-                  type="text" required placeholder="NIP / Email" 
-                  value={nip} onChange={(e) => setNip(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all duration-300 text-sm text-slate-700 font-medium placeholder:text-slate-400 shadow-sm"
+                  type="text" required placeholder="Inisial (Contoh: IND, IBL)" 
+                  value={initial} onChange={(e) => setInitial(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all duration-300 text-sm text-slate-700 font-bold uppercase placeholder:normal-case placeholder:font-medium placeholder:text-slate-400 shadow-sm"
                 />
               </div>
             </div>
