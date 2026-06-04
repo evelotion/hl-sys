@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client'; 
-
-const prisma = new PrismaClient();
+// 1. Hapus import PrismaClient dan ganti pakai import 'db' dari lib lo
+import { db } from '@/src/lib/db'; 
 
 export async function POST(
   request: Request,
-  // 1. Ubah tipe params menjadi Promise
-  { params }: { params: Promise<{ id: string }> } 
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
     const { proofUrl } = body;
     
-    // 2. Await params-nya sebelum diambil id-nya
     const resolvedParams = await params;
     const ticketId = resolvedParams.id; 
 
@@ -23,7 +20,8 @@ export async function POST(
       );
     }
 
-    const updatedTicket = await prisma.ticket.update({
+    // 2. Ganti kata 'prisma' jadi 'db'
+    const updatedTicket = await db.ticket.update({
       where: { id: ticketId },
       data: {
         status: 'DONE',       
