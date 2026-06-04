@@ -189,11 +189,14 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
           </div>
 
           {ticket?.issueImgUrl && (
-            <div className="bg-white p-6 rounded-[24px] border border-slate-200/60 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-              <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><CheckCircle2 size={16}/> File Pendukung (Bukti)</h3>
-              <img src={ticket.issueImgUrl} alt="Bukti" className="w-full md:w-1/2 rounded-xl border border-slate-200" />
-            </div>
-          )}
+  <div className="bg-white p-6 rounded-[24px] border border-slate-200/60 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
+    <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><CheckCircle2 size={16}/> File Pendukung (Bukti)</h3>
+    <a href={ticket.issueImgUrl} target="_blank" rel="noopener noreferrer" className="block w-full md:w-1/2 rounded-xl border border-slate-200 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer">
+      <img src={ticket.issueImgUrl} alt="Bukti" className="w-full h-auto" />
+    </a>
+    <p className="text-[10px] text-slate-400 mt-2 font-medium italic">*Klik gambar untuk melihat dokumen penuh.</p>
+  </div>
+)}
         </div>
 
         <div className="space-y-6">
