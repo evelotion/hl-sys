@@ -1,56 +1,50 @@
 // hl-sys/src/app/api/upload/route.ts
 import { NextResponse } from 'next/server';
-import { google } from 'googleapis';
-import { Readable } from 'stream';
 
 export async function POST(req: Request) {
   try {
+    // 1. Terima file dari Frontend
     const formData = await req.formData();
     const file = formData.get('file') as File;
 
-    if (!file) return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
+    }
 
-    // 1. Otentikasi ke Google Drive pakai JSON lo
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL,
-        // Replace \n string jadi enter beneran (penting buat Vercel)
-        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'), 
-      },
-      scopes: ['https://www.googleapis.com/auth/drive.file'],
-    });
+    // Ambil Env Cloudinary lo
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'hl_sys_preset';
 
-    const drive = google.drive({ version: 'v3', auth });
+    if (!cloudName) {
+      return NextResponse.json({ error: 'Env Cloudinary belum disetting di server' }, { status: 500 });
+    }
 
-    // 2. Ubah file jadi Stream biar bisa diupload
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const stream = new Readable();
-    stream.push(buffer);
-    stream.push(null);
+    // 2. Bungkus ulang file-nya untuk dikirim ke Cloudinary
+    const cloudinaryFormData = new FormData();
+    cloudinaryFormData.append('file', file);
+    cloudinaryFormData.append('upload_preset', uploadPreset);
 
-    // 3. Upload file ke Folder ID lo
-    const response = await drive.files.create({
-      requestBody: {
-        name: `HLSYS_${Date.now()}_${file.name}`,
-        parents: [process.env.GOOGLE_DRIVE_FOLDER_ID!],
-      },
-      media: { mimeType: file.type, body: stream },
-      fields: 'id, webViewLink, webContentLink',
-    });
+    // 3. Nembak ke Cloudinary DARI SERVER (Ini yang bikin kebal CORS & Firewall)
+    const cloudinaryRes = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        method: 'POST',
+        body: cloudinaryFormData,
+      }
+    );
 
-    const fileId = response.data.id!;
+    const data = await cloudinaryRes.json();
 
-    // 4. Ubah permission file jadi "Anyone with the link can view" biar bisa di-preview di web lo
-    await drive.permissions.create({
-      fileId: fileId,
-      requestBody: { role: 'reader', type: 'anyone' },
-    });
-
-    // Return link gambarnya
-    return NextResponse.json({ success: true, url: response.data.webViewLink });
+    // 4. Balikin URL gambarnya ke Frontend
+    if (data.secure_url) {
+      return NextResponse.json({ success: true, url: data.secure_url });
+    } else {
+      console.error("Cloudinary Error Response:", data);
+      return NextResponse.json({ error: 'Ditolak oleh Cloudinary', details: data }, { status: 400 });
+    }
 
   } catch (error) {
-    console.error('Error Drive Upload:', error);
-    return NextResponse.json({ error: 'Gagal upload ke Google Drive' }, { status: 500 });
+    console.error('Error Backend Upload:', error);
+    return NextResponse.json({ error: 'Terjadi kesalahan sistem di Backend' }, { status: 500 });
   }
 }
