@@ -66,18 +66,26 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
     try {
       const options = { maxSizeMB: 1, maxWidthOrHeight: 1024, useWebWorker: true };
       const compressedFile = await imageCompression(file, options);
+      
       const uploadData = new FormData();
       uploadData.append('file', compressedFile);
-      uploadData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'hl_sys_preset');
 
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        { method: 'POST', body: uploadData }
-      );
+      // Nembak ke API lokal kita sendiri (Bebas CORS & Firewall!)
+      const res = await fetch('/api/upload', { 
+        method: 'POST', 
+        body: uploadData 
+      });
+      
       const data = await res.json();
-      if (data.secure_url) setFormData({ ...formData, issueImgUrl: data.secure_url });
+      
+      if (data.success && data.url) {
+        setFormData({ ...formData, issueImgUrl: data.url });
+      } else {
+        alert("Gagal mengunggah file. Silakan coba lagi.");
+      }
     } catch (error) {
       console.error("Gagal upload media:", error);
+      alert("Terjadi kesalahan jaringan saat mengunggah file.");
     } finally {
       setIsUploading(false);
     }
