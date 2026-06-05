@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, KeyRound, Plus, Edit, Trash2, X, Loader2, ArrowRight } from 'lucide-react';
+import { ShieldAlert, KeyRound, Plus, Edit, Trash2, X, Loader2, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
@@ -19,6 +19,10 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({ id: '', initial: '', name: '', phone: '', email: '', role: 'PIC_LOGISTIK' });
 
+  // --- STATE PAGINATION ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Jumlah user per halaman
+
   // Handle Unlock
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +36,6 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
   };
 
   // Handle Submit Form (Create / Edit)
-// Handle Submit Form (Create / Edit)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -41,10 +44,8 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
       const url = isEdit ? `/api/users/${formData.id}` : `/api/users`;
       const method = isEdit ? 'PATCH' : 'POST';
       
-      // SOLUSI ERROR: Kita pisahkan 'id' dari properti lainnya secara aman
+      // Pisahkan 'id' dari properti lainnya secara aman
       const { id, ...payloadWithoutId } = formData;
-
-      // Jika edit, kirim formData utuh. Jika create (user baru), kirim tanpa id
       const finalPayload = isEdit ? formData : payloadWithoutId;
 
       const res = await fetch(url, {
@@ -81,6 +82,21 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
       toast.error('Gagal menghapus user!');
     }
   };
+
+  // --- LOGIKA PEMOTONGAN DATA (PAGINATION) ---
+  const totalPages = Math.ceil(users.length / itemsPerPage);
+  
+  // Efek ini untuk mencegah error halaman kosong (misal lagi di page 3, tapi usernya dihapus semua)
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [users.length, totalPages, currentPage]);
+
+  const paginatedUsers = users.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // TAMPILAN LOCK SCREEN
   if (!isUnlocked) {
@@ -132,7 +148,8 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {users.map(user => (
+              {/* Ganti looping dari users.map menjadi paginatedUsers.map */}
+              {paginatedUsers.map(user => (
                 <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4 font-black text-indigo-600">{user.initial}</td>
                   <td className="px-6 py-4 font-bold text-slate-700 text-sm">{user.name}</td>
@@ -153,7 +170,42 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
               ))}
             </tbody>
           </table>
+          
+          {paginatedUsers.length === 0 && (
+            <div className="text-center p-10 text-slate-400 font-medium text-sm">Tidak ada data user.</div>
+          )}
         </div>
+
+        {/* --- FOOTER PAGINATION --- */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100/60 bg-slate-50/30">
+            <span className="text-[10px] md:text-xs text-slate-500 font-semibold">
+              Menampilkan <span className="text-slate-800 font-bold">{((currentPage - 1) * itemsPerPage) + 1}</span> - <span className="text-slate-800 font-bold">{Math.min(currentPage * itemsPerPage, users.length)}</span> dari <span className="text-slate-800 font-bold">{users.length}</span> user
+            </span>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                <ChevronLeft size={14} /> Prev
+              </button>
+              
+              <div className="flex items-center justify-center min-w-[32px] h-[32px] text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg">
+                {currentPage}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal Form */}
