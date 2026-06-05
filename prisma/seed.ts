@@ -25,7 +25,7 @@ async function main() {
   console.log('⏳ Mulai seeding database user...')
 
   const usersData = [
-    { initial: 'ABC', name: 'Andreanne B Christie', phone: '62818415996', email: 'andreanne_soetarman@bcasyariah.co.id', role: 'PIC_LOGISTIK' },
+    { initial: 'ABC', name: 'Andreanne B Christie', phone: '62818415996', email: 'andreanne_soetarman@bcasyariah.co.id', role: 'OPERATOR' },
     { initial: 'FER', name: 'Dian Ferdian', phone: '628567076858', email: 'dian_ferdian@bcasyariah.co.id', role: 'PIC_LOGISTIK' },
     { initial: 'NOV', name: 'Novianti Siswandi', phone: '6281385270839', email: 'novianti_siswandi@bcasyariah.co.id', role: 'PIC_LOGISTIK' },
     { initial: 'MAU', name: 'Maulina Ayu Arini', phone: '6285692876080', email: 'maulina_ayu@bcasyariah.co.id', role: 'PIC_LOGISTIK' },

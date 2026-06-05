@@ -82,7 +82,7 @@ export default function LoginPage() {
               <div className="relative group">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors duration-300" size={16} />
                 <input 
-                  type="text" required placeholder="NIP / Email" 
+                  type="text" required placeholder="CONTOH: IND, SEM" 
                   value={nip} onChange={(e) => setNip(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all duration-300 text-sm text-slate-700 font-medium placeholder:text-slate-400 shadow-sm"
                 />
