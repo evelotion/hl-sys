@@ -1,15 +1,15 @@
 // hl-sys/src/app/(dashboard)/tickets/TicketClient.tsx
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Clock, AlertCircle, CheckCircle, ArrowDownUp, Tags, Filter } from 'lucide-react';
+import { Search, Plus, Clock, AlertCircle, CheckCircle, ArrowDownUp, Tags, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const FilterButton = ({ label, value, currentFilter, onSelect }: { label: string, value: string, currentFilter: string, onSelect: (v: string) => void }) => {
   const isActive = currentFilter === value;
   return (
-    <button 
+    <button
       onClick={() => onSelect(value)}
       className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-300 relative whitespace-nowrap ${
         isActive ? 'text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
@@ -25,9 +25,14 @@ const FilterButton = ({ label, value, currentFilter, onSelect }: { label: string
 
 export default function TicketClient({ initialTickets, userRole }: { initialTickets: any[]; userRole?: string; }) {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL'); 
-  const [categoryFilter, setCategoryFilter] = useState('ALL'); // <-- IMPROVE POIN 5: State Kategori
-  const [sortOrder, setSortOrder] = useState('NEWEST'); 
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [sortOrder, setSortOrder] = useState('NEWEST');
+  
+  // --- STATE PAGINATION BARU ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Jumlah tiket per halaman, bisa lo ganti jadi 15 atau 20
+
   const router = useRouter();
 
   const processedTickets = useMemo(() => {
@@ -44,7 +49,7 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
       result = result.filter(t => t.status === statusFilter);
     }
 
-    // Filter by Kategori (IMPROVE POIN 5)
+    // Filter by Kategori
     if (categoryFilter !== 'ALL') {
       result = result.filter(t => t.category === categoryFilter);
     }
@@ -54,6 +59,19 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
     
     return result;
   }, [initialTickets, search, statusFilter, categoryFilter, sortOrder]);
+
+  // --- LOGIKA RESET HALAMAN & PEMOTONGAN DATA ---
+  // Reset ke halaman 1 kalau user ganti filter atau ngetik pencarian
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, categoryFilter, sortOrder]);
+
+  // Hitung total halaman & potong data sesuai halaman saat ini
+  const totalPages = Math.ceil(processedTickets.length / itemsPerPage);
+  const paginatedTickets = processedTickets.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const getStatusBadge = (status: string) => {
     switch(status) {
@@ -68,7 +86,6 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
-          {/* IMPROVE POIN 4: Standarisasi Nama Halaman */}
           <h2 className="text-xl font-bold text-slate-800 tracking-wide">Manajemen Tiket</h2>
           <p className="text-slate-500 mt-1 font-medium text-xs">Pantau dan kelola semua request logistik dari satu pintu.</p>
         </motion.div>
@@ -97,7 +114,6 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
         </div>
 
         <div className="flex items-center gap-2 w-full xl:w-auto flex-wrap">
-          {/* IMPROVE POIN 5: Dropdown Filter Kategori */}
           <div className="relative">
             <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
             <select 
@@ -131,10 +147,12 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="w-full">
+        
         {/* MOBILE VIEW */}
         <div className="md:hidden flex flex-col gap-3">
           <AnimatePresence>
-            {processedTickets.map((ticket) => (
+            {/* GANTI MAP DARI processedTickets KE paginatedTickets */}
+            {paginatedTickets.map((ticket) => (
               <motion.div 
                 key={ticket.originalId}
                 layout initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.2 }}
@@ -150,14 +168,14 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-50">
                   <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 text-slate-500 rounded-md text-[10px] font-bold border border-slate-100"><Tags size={10} /> {ticket.category}</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 text-slate-500 rounded-md text-[10px] font-bold border border-slate-100">📍 {ticket.cabang}</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 text-slate-500 rounded-md text-[10px] font-bold border border-slate-100">👤 {ticket.pic}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 text-slate-500 rounded-md text-[10px] font-bold border border-slate-100">  {ticket.cabang}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 text-slate-500 rounded-md text-[10px] font-bold border border-slate-100">  {ticket.pic}</span>
                 </div>
-                <p className="text-[10px] text-slate-400 font-medium">📅 {ticket.date}</p>
+                <p className="text-[10px] text-slate-400 font-medium">  {ticket.date}</p>
               </motion.div>
             ))}
           </AnimatePresence>
-          {processedTickets.length === 0 && <div className="text-center p-6 text-slate-400 font-medium text-xs border border-dashed rounded-xl">Tidak ada tiket ditemukan</div>}
+          {paginatedTickets.length === 0 && <div className="text-center p-6 text-slate-400 font-medium text-xs border border-dashed rounded-xl">Tidak ada tiket ditemukan</div>}
         </div>
 
         {/* DESKTOP VIEW */}
@@ -176,7 +194,8 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
               </thead>
               <tbody>
                 <AnimatePresence>
-                  {processedTickets.map((ticket) => (
+                  {/* GANTI MAP DARI processedTickets KE paginatedTickets */}
+                  {paginatedTickets.map((ticket) => (
                     <motion.tr 
                       layout initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.2 }}
                       onClick={() => router.push(`/tickets/${ticket.originalId}`)}
@@ -199,8 +218,41 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
                 </AnimatePresence>
               </tbody>
             </table>
-            {processedTickets.length === 0 && <div className="text-center p-10 text-slate-400 font-medium text-sm">Tidak ada tiket ditemukan pada filter ini</div>}
+            {paginatedTickets.length === 0 && <div className="text-center p-10 text-slate-400 font-medium text-sm">Tidak ada tiket ditemukan pada filter ini</div>}
           </div>
+
+          {/* --- FOOTER PAGINATION --- */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100/60 bg-slate-50/30">
+              <span className="text-[10px] md:text-xs text-slate-500 font-semibold">
+                Menampilkan <span className="text-slate-800 font-bold">{((currentPage - 1) * itemsPerPage) + 1}</span> - <span className="text-slate-800 font-bold">{Math.min(currentPage * itemsPerPage, processedTickets.length)}</span> dari <span className="text-slate-800 font-bold">{processedTickets.length}</span> tiket
+              </span>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+                >
+                  <ChevronLeft size={14} /> Prev
+                </button>
+                
+                <div className="flex items-center justify-center min-w-[32px] h-[32px] text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg">
+                  {currentPage}
+                </div>
+                
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+                >
+                  Next <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+          {/* ------------------------- */}
+
         </div>
       </motion.div>
     </div>
