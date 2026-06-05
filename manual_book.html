@@ -34,89 +34,15 @@
             line-height: 1.6;
             margin: 0;
             padding: 0;
-            background-color: var(--slate-50); /* Background abu-abu untuk desktop */
-            font-size: 11pt;
-        }
-
-        /* --- LAYOUT DESKTOP (SCREEN) --- */
-        .layout-wrapper {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* Sidebar Navigation */
-        .sidebar {
-            width: 280px;
-            background-color: #ffffff;
-            border-right: 1px solid var(--slate-200);
-            height: 100vh;
-            position: sticky;
-            top: 0;
-            padding: 32px 24px;
-            overflow-y: auto;
-            flex-shrink: 0;
-        }
-
-        .sidebar h2 {
-            font-size: 14pt;
-            color: var(--slate-900);
-            margin-top: 0;
-            margin-bottom: 24px;
-            border-bottom: 2px solid var(--slate-100);
-            padding-bottom: 12px;
-        }
-        .sidebar h2::before { display: none; }
-
-        .sidebar ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .sidebar li { margin-bottom: 8px; }
-
-        .sidebar a {
-            text-decoration: none;
-            color: var(--slate-600);
-            font-weight: 500;
             font-size: 10.5pt;
-            display: block;
-            padding: 10px 14px;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-
-        .sidebar a:hover {
-            background-color: var(--slate-50);
-            color: var(--primary);
-        }
-
-        .sidebar .sub-menu {
-            padding-left: 16px;
-            margin-top: 4px;
-            border-left: 2px solid var(--slate-100);
-            margin-left: 12px;
-        }
-        
-        .sidebar .sub-menu a {
-            font-size: 9.5pt;
-            padding: 6px 12px;
-        }
-
-        /* Main Content Area (Desktop) */
-        .main-content {
-            flex: 1;
-            padding: 40px;
             background-color: #ffffff;
-            max-width: 900px;
-            margin: 0 auto;
-            box-shadow: 0 0 40px rgba(0,0,0,0.02); /* Efek Kertas */
         }
 
-        /* --- PRINT SPECIFIC STYLES --- */
+        /* --- STYLING@PAGE UNTUK PRINT / WEASYPRINT --- */
         @page {
             size: A4;
-            margin: 20mm;
+            margin: 20mm 15mm;
+            background-color: #ffffff;
             @bottom-right {
                 content: counter(page);
                 font-family: 'Inter', sans-serif;
@@ -125,108 +51,190 @@
             }
         }
 
-        @media print {
+        /* --- LAYOUT DUAL-MODE (SCREEN VS PRINT) --- */
+        @media screen {
             body {
-                background-color: white;
+                padding-left: 290px;
+                background-color: var(--slate-50);
             }
-            
-            /* Sembunyikan Sidebar & Ubah Layout kembali ke format blok/buku */
+
+            /* Fixed Sticky Sidebar on Screen */
             .sidebar {
-                display: none !important;
-            }
-            .layout-wrapper {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 290px;
+                background-color: #ffffff;
+                border-right: 1px solid var(--slate-200);
+                padding: 35px 24px;
+                overflow-y: auto;
+                z-index: 1000;
                 display: block;
             }
-            .main-content {
+
+            .sidebar h2 {
+                font-size: 13pt;
+                font-weight: 800;
+                color: var(--slate-900);
+                margin-top: 0;
+                margin-bottom: 20px;
+                padding-bottom: 12px;
+                border-bottom: 2px solid var(--slate-100);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .sidebar ul {
+                list-style: none;
                 padding: 0;
-                max-width: 100%;
-                box-shadow: none;
                 margin: 0;
             }
 
+            .sidebar li {
+                margin-bottom: 4px;
+            }
+
+            .sidebar a {
+                text-decoration: none;
+                color: var(--slate-600);
+                font-weight: 500;
+                font-size: 10pt;
+                display: block;
+                padding: 8px 12px;
+                border-radius: 8px;
+                transition: all 0.2s ease;
+            }
+
+            .sidebar a:hover {
+                background-color: var(--slate-100);
+                color: var(--primary);
+            }
+
+            .sidebar .sub-menu {
+                padding-left: 14px;
+                margin-top: 2px;
+                margin-left: 10px;
+                border-left: 1.5px solid var(--slate-200);
+            }
+
+            .sidebar .sub-menu a {
+                font-size: 9pt;
+                padding: 5px 10px;
+            }
+
+            /* Container Kertas Premium di Tengah Layar */
+            .main-content {
+                max-width: 860px;
+                margin: 40px auto;
+                background-color: #ffffff;
+                padding: 50px 60px;
+                border-radius: 16px;
+                box-shadow: 0 4px 25px rgba(15, 23, 42, 0.06);
+            }
+
+            #daftar-isi-print {
+                display: none; /* Sembunyikan daftar isi statis di web karena sudah ada sidebar */
+            }
+        }
+
+        @media print {
+            .sidebar {
+                display: none !important;
+            }
+            .main-content {
+                display: block !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                background: transparent !important;
+            }
+            #daftar-isi-print {
+                display: block !important;
+            }
             .page-break {
                 page-break-before: always;
             }
-            .avoid-break {
-                page-break-inside: avoid;
-            }
-            h2, h3 {
-                page-break-after: avoid;
-            }
-            .cover {
-                height: 100vh;
-            }
-            
-            /* Sembunyikan link daftar isi manual karena print punya format buku asli */
-            #daftar-isi {
-                display: block;
-            }
         }
 
-        /* Di layar, Sembunyikan Daftar Isi Manual (karena udah ada Sidebar) */
-        @media screen {
-            #daftar-isi {
-                display: none;
-            }
+        /* --- PREVENTION FOR OVERFLOW & BAD BREAKS --- */
+        .image-container, .info-box, table, tr, th, td {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
         }
 
-        /* --- COMPONENT STYLES (Sesuai kode asli lo) --- */
+        h1, h2, h3, h4 {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+        }
+
+        /* --- COVER PAGE --- */
         .cover {
             display: flex;
             flex-direction: column;
             justify-content: center;
             min-height: 80vh;
             text-align: center;
-            padding: 40px;
-            position: relative;
+            padding: 20px 0;
         }
 
-        .cover-logo {
-            width: 120px;
-            height: 120px;
-            background: var(--slate-50);
-            border: 2px dashed var(--slate-200);
-            border-radius: 24px;
-            margin: 0 auto 40px auto;
+        /* Perbaikan Emblem Logo: Gak numpuk & rapi tanpa JS */
+        .cover-logo-wrapper {
+            margin: 0 auto 30px auto;
+            width: 80px;
+            height: 80px;
+            background-color: var(--primary);
+            color: #ffffff;
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--slate-400);
-            font-weight: bold;
-            font-size: 14px;
+            font-weight: 800;
+            font-size: 26px;
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.25);
+            position: relative;
         }
 
         .cover-title {
-            font-size: 36pt;
+            font-size: 32pt;
             font-weight: 800;
             color: var(--slate-900);
-            line-height: 1.1;
-            margin-bottom: 16px;
+            line-height: 1.15;
+            margin: 0 0 12px 0;
             letter-spacing: -1px;
         }
 
         .cover-subtitle {
-            font-size: 16pt;
-            font-weight: 600;
+            font-size: 14pt;
+            font-weight: 700;
             color: var(--primary);
             text-transform: uppercase;
             letter-spacing: 2px;
-            margin-bottom: 40px;
+            margin-bottom: 35px;
+        }
+
+        .cover-description {
+            font-size: 12pt;
+            color: var(--slate-500);
+            max-width: 550px;
+            margin: 0 auto 50px auto;
         }
 
         .cover-meta {
             margin-top: auto;
             border-top: 2px solid var(--slate-100);
-            padding-top: 20px;
+            padding-top: 24px;
             text-align: left;
             display: inline-block;
             margin-left: auto;
             margin-right: auto;
+            min-width: 320px;
         }
 
         .cover-meta p {
-            margin: 4px 0;
-            font-size: 12pt;
+            margin: 6px 0;
+            font-size: 10.5pt;
             color: var(--slate-600);
         }
 
@@ -234,144 +242,124 @@
             color: var(--slate-900);
         }
 
-        /* Typography & Layout */
+        /* --- TYPOGRAPHY --- */
         h1 {
-            font-size: 24pt;
+            font-size: 20pt;
             color: var(--primary);
-            border-bottom: 3px solid var(--primary);
-            padding-bottom: 8px;
+            border-bottom: 2.5px solid var(--primary);
+            padding-bottom: 6px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+
+        .main-content > .section:first-child h1 {
             margin-top: 0;
-            margin-bottom: 24px;
         }
 
         h2 {
-            font-size: 18pt;
+            font-size: 14pt;
             color: var(--slate-900);
-            margin-top: 48px; /* Dikasih jarak lebih buat layar desktop */
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        h2::before {
-            content: '';
-            display: block;
-            width: 6px;
-            height: 24px;
-            background-color: var(--primary);
-            border-radius: 4px;
+            margin-top: 30px;
+            margin-bottom: 14px;
+            border-left: 4px solid var(--primary);
+            padding-left: 12px;
         }
 
         h3 {
-            font-size: 14pt;
+            font-size: 12pt;
             color: var(--slate-800);
-            margin-top: 24px;
-            margin-bottom: 12px;
+            margin-top: 22px;
+            margin-bottom: 10px;
+            font-weight: 600;
         }
 
         p {
-            margin-bottom: 16px;
+            margin-top: 0;
+            margin-bottom: 14px;
             color: var(--slate-600);
             text-align: justify;
         }
 
         ul, ol {
-            margin-bottom: 16px;
-            padding-left: 24px;
+            margin-top: 0;
+            margin-bottom: 14px;
+            padding-left: 20px;
             color: var(--slate-600);
         }
 
         li {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
-        /* Image Placeholders */
+        /* --- IMAGE CONTAINER BOX (FIX BREAK & HIDE-SHOW) --- */
         .image-container {
-            margin: 32px 0;
+            margin: 24px 0;
             text-align: center;
         }
 
         .image-box {
             background-color: var(--slate-50);
-            border: 2px dashed var(--slate-400);
-            border-radius: 16px;
-            padding: 60px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
+            border: 1px solid var(--slate-200);
+            border-radius: 12px;
+            padding: 16px;
+            display: block;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.01);
         }
 
+        /* Perbaikan: Gak pakai display:none bawaan biar anti-gagal load */
         .image-box img {
             max-width: 100%;
             height: auto;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            display: none;
-        }
-
-        .image-box img[src]:not([src=""]) {
-            display: block;
-        }
-
-        .image-box img[src]:not([src=""]) + .placeholder-text {
-            display: none;
-        }
-
-        .placeholder-text {
-            color: var(--slate-500);
-            font-family: monospace;
-            font-size: 10pt;
-            background: white;
-            padding: 8px 16px;
             border-radius: 8px;
-            border: 1px solid var(--slate-200);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+            display: block;
+            margin: 0 auto;
         }
 
         .image-caption {
             font-size: 9pt;
             color: var(--slate-500);
             font-style: italic;
-            margin-top: 12px;
+            margin-top: 10px;
+            font-weight: 500;
         }
 
-        /* Callouts / Info Boxes */
+        /* --- CALLOUT BOX --- */
         .info-box {
             background-color: #EEF2FF;
             border-left: 4px solid var(--primary);
-            padding: 16px 20px;
-            border-radius: 0 12px 12px 0;
-            margin: 24px 0;
+            padding: 14px 18px;
+            border-radius: 0 10px 10px 0;
+            margin: 20px 0;
         }
 
         .info-box h4 {
-            margin: 0 0 8px 0;
+            margin: 0 0 6px 0;
             color: var(--primary-dark);
             font-size: 11pt;
+            font-weight: 700;
         }
 
         .info-box p {
             margin: 0;
             color: #4338CA;
-            font-size: 10pt;
+            font-size: 9.5pt;
+            text-align: left;
         }
 
-        /* Tables */
+        /* --- TABLES --- */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 24px 0;
-            font-size: 10pt;
+            margin: 20px 0;
+            font-size: 9.5pt;
         }
 
         th, td {
             border: 1px solid var(--slate-200);
-            padding: 12px 16px;
+            padding: 10px 14px;
             text-align: left;
+            vertical-align: middle;
         }
 
         th {
@@ -379,7 +367,7 @@
             font-weight: 700;
             color: var(--slate-800);
             text-transform: uppercase;
-            font-size: 9pt;
+            font-size: 8.5pt;
             letter-spacing: 0.5px;
         }
 
@@ -389,21 +377,20 @@
 
         .badge {
             display: inline-block;
-            padding: 4px 8px;
-            border-radius: 6px;
+            padding: 3px 8px;
+            border-radius: 5px;
             font-size: 8pt;
             font-weight: 700;
             text-transform: uppercase;
         }
-
         .badge-admin { background: #FFFBEB; color: #D97706; border: 1px solid #FEF3C7; }
         .badge-pic { background: #ECFDF5; color: #059669; border: 1px solid #D1FAE5; }
+
     </style>
 </head>
 <body>
 
-<div class="layout-wrapper">
-    <!-- SIDEBAR NAVIGASI (Desktop Only) -->
+    <!-- SIDEBAR NAVIGASI (Hanya aktif di Screen / Desktop) -->
     <nav class="sidebar">
         <h2>HL-SYS Docs</h2>
         <ul>
@@ -424,23 +411,23 @@
         </ul>
     </nav>
 
-    <!-- KONTEN UTAMA -->
-    <main class="main-content">
-        
+    <!-- KONTEN BUKU UTAMA -->
+    <div class="main-content">
+
         <!-- COVER PAGE -->
         <div id="cover" class="cover">
-            <div class="cover-logo">
-                <img src="assets/images/logo-bca-syariah.png" alt="" style="max-width:100%; display:none;" onload="this.style.display='block'; this.parentElement.style.border='none'; this.parentElement.style.background='transparent';">
-                <span class="placeholder-text">[Logo Perusahaan]</span>
+            <div class="cover-logo-wrapper">
+                <span>HL</span>
             </div>
             
             <h1 class="cover-title">Manual Book<br>HL-SYS</h1>
             <div class="cover-subtitle">Hotline Logistik Terintegrasi</div>
             
-            <p style="font-size: 14pt; color: var(--slate-500); max-width: 600px; margin: 0 auto;">
+            <p class="cover-description">
                 Panduan Penggunaan Sistem Manajemen Logistik Satu Pintu<br>
-                Kantor Pusat & Cabang
+                Kantor Pusat & Cabang BCA Syariah
             </p>
+
             <div class="cover-meta">
                 <p><strong>Departemen:</strong> Logistik / Asset Management</p>
                 <p><strong>Sistem Version:</strong> 1.0.0</p>
@@ -451,18 +438,18 @@
 
         <div class="page-break"></div>
 
-        <!-- DAFTAR ISI MANUAL (Hanya Muncul Saat Print) -->
-        <div id="daftar-isi" class="section">
+        <!-- DAFTAR ISI (Hanya muncul saat di-print ke PDF/Kertas) -->
+        <div id="daftar-isi-print" class="section">
             <h1>Daftar Isi</h1>
-            <ol style="font-size: 12pt; font-weight: 500; line-height: 2;">
+            <ol style="font-size: 11pt; font-weight: 500; line-height: 2.2;">
                 <li>Pendahuluan</li>
                 <li>Hak Akses & Login Sistem</li>
                 <li>Dashboard Monitoring</li>
                 <li>Manajemen Tiket (Helpdesk)
-                    <ul style="font-weight: 400; list-style-type: disc;">
-                        <li>Melihat Daftar Tiket</li>
+                    <ul style="font-weight: 400; list-style-type: disc; padding-left: 20px;">
+                        <li>Melihat & Memfilter Daftar Tiket</li>
                         <li>Membuat Tiket Baru</li>
-                        <li>Detail, Update Status, & Catatan</li>
+                        <li>Detail Tiket, Update Status, & Rekam Jejak</li>
                     </ul>
                 </li>
                 <li>Laporan & Ekspor Data (Reports)</li>
@@ -481,7 +468,7 @@
 
             <div class="info-box">
                 <h4>Fitur Utama HL-SYS:</h4>
-                <p>✓ Monitoring SLA secara otomatis (Timer Kritis)<br>
+                <p>✔ Monitoring SLA secara otomatis (Timer Kritis)<br>
                    ✓ Notifikasi otomatis terintegrasi Omnichannel (MS Teams, Email, WhatsApp)<br>
                    ✓ Fitur <em>Client-Side Compression</em> untuk mengunggah dokumen bukti kerja dengan cepat<br>
                    ✓ Rekam jejak aktivitas (<em>Audit Trail</em>) untuk transparansi pengerjaan<br>
@@ -490,7 +477,7 @@
         </div>
 
         <!-- BAB 2: LOGIN -->
-        <div id="bab-2" class="section avoid-break">
+        <div id="bab-2" class="section">
             <h1>2. Hak Akses & Login Sistem</h1>
             <p>Sistem membedakan pengguna ke dalam dua tingkatan <em>role</em> utama yang menentukan batasan fitur yang dapat diakses:</p>
             
@@ -524,7 +511,6 @@
             <div class="image-container">
                 <div class="image-box">
                     <img src="assets/images/login-screen.png" alt="Login Screen">
-                    <span class="placeholder-text">Replace with: assets/images/login-screen.png</span>
                 </div>
                 <div class="image-caption">Gambar 2.1 - Halaman Login dengan UI Glassmorphism Premium</div>
             </div>
@@ -549,7 +535,6 @@
             <div class="image-container">
                 <div class="image-box">
                     <img src="assets/images/dashboard-main.png" alt="Dashboard Main">
-                    <span class="placeholder-text">Replace with: assets/images/dashboard-main.png</span>
                 </div>
                 <div class="image-caption">Gambar 3.1 - Tampilan Dashboard dengan SLA Tracking dan Distribusi Beban Kerja</div>
             </div>
@@ -567,11 +552,10 @@
 
             <h2 id="bab-4-1">4.1 Melihat & Memfilter Daftar Tiket</h2>
             <p>Anda dapat mencari tiket secara spesifik melalui fitur pencarian atau menggunakan tombol filter interaktif. Filter mencakup kategori (P3, Pengadaan, Pembayaran) serta status tiket (Request, Progress, Selesai).</p>
-            
-            <div class="image-container avoid-break">
+
+            <div class="image-container">
                 <div class="image-box">
                     <img src="assets/images/ticket-list.png" alt="Ticket List">
-                    <span class="placeholder-text">Replace with: assets/images/ticket-list.png</span>
                 </div>
                 <div class="image-caption">Gambar 4.1 - Daftar Tiket Logistik Terpadu</div>
             </div>
@@ -586,10 +570,9 @@
                 <li>Pilih saluran notifikasi otomatis yang ingin digunakan (MS Teams, WhatsApp, atau Email Outlook).</li>
             </ol>
 
-            <div class="image-container avoid-break">
+            <div class="image-container">
                 <div class="image-box">
                     <img src="assets/images/create-ticket.png" alt="Create Ticket Form">
-                    <span class="placeholder-text">Replace with: assets/images/create-ticket.png</span>
                 </div>
                 <div class="image-caption">Gambar 4.2 - Form Pembuatan Tiket Baru dengan Multi-Notification Checkbox</div>
             </div>
@@ -606,26 +589,24 @@
                 <li><strong>Jejak Aktivitas & Catatan:</strong> Sebuah log kronologis yang mencatat interaksi sistem. Administrator atau PIC dapat menambahkan catatan <em>progress</em> lapangan di sini. Sistem juga secara otomatis mencatat <em>Log Audit</em> apabila terjadi <em>Re-assignment</em> PIC atau perubahan data tiket lainnya.</li>
             </ul>
 
-            <div class="image-container avoid-break">
+            <div class="image-container">
                 <div class="image-box">
                     <img src="assets/images/ticket-detail.png" alt="Ticket Detail View">
-                    <span class="placeholder-text">Replace with: assets/images/ticket-detail.png</span>
                 </div>
                 <div class="image-caption">Gambar 4.3 - Halaman Detail Tiket, Tracking Status, dan Log Aktivitas</div>
             </div>
         </div>
 
         <!-- BAB 5: REPORTS -->
-        <div id="bab-5" class="section avoid-break">
+        <div id="bab-5" class="section">
             <h1>5. Laporan & Ekspor Data (Reports)</h1>
             <p>Menu Reports mempermudah departemen logistik dalam menyusun laporan rekapitulasi bulanan, menggantikan tugas manual konvensional. Fitur ini dirancang khusus untuk memfasilitasi kebutuhan pelaporan terhadap jajaran manajemen (BOD/Group Head).</p>
             
             <p>Dengan menekan tombol <strong>Unduh Laporan Excel</strong>, sistem secara <em>real-time</em> akan merangkum seluruh <em>database</em> pengerjaan logistik dan mengunduhnya ke dalam format <code>.xlsx</code> yang sudah ter-<em>styling</em> (termasuk <em>header</em>, border, dan format kolom) sehingga dokumen Excel siap langsung digunakan untuk keperluan cetak atau rapat presentasi tanpa perlu dirapikan ulang.</p>
-            
+
             <div class="image-container">
                 <div class="image-box">
                     <img src="assets/images/reports-screen.png" alt="Reports Generator">
-                    <span class="placeholder-text">Replace with: assets/images/reports-screen.png</span>
                 </div>
                 <div class="image-caption">Gambar 5.1 - Modul Penarikan Data (Export to Excel) Terpusat</div>
             </div>
@@ -646,17 +627,14 @@
                    3. <strong>Hapus Akses:</strong> Mencabut hak masuk personel yang sudah tidak berada di departemen terkait.</p>
             </div>
 
-            <div class="image-container avoid-break">
+            <div class="image-container">
                 <div class="image-box">
                     <img src="assets/images/user-management.png" alt="User Management">
-                    <span class="placeholder-text">Replace with: assets/images/user-management.png</span>
                 </div>
                 <div class="image-caption">Gambar 6.1 - Halaman Manajemen Akses Pengguna & Struktur Organisasi Sistem</div>
             </div>
         </div>
-        
-    </main>
-</div>
 
+    </div>
 </body>
 </html>
