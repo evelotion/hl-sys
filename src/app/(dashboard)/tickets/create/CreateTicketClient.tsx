@@ -329,7 +329,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
         {/* UPDATE: UI CHECKLIST MULTI-SELECT NOTIFIKASI */}
         <div className="space-y-3 pt-6 border-t border-slate-100">
-          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Kirim Notifikasi Tugas Via (Bisa Pilih > 1)</label>
+        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Kirim Notifikasi Tugas Via (Bisa Pilih &gt; 1)</label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             
             <div onClick={() => toggleNotification('teams')} className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${formData.notificationMethods.includes('teams') ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-300 bg-slate-50'}`}>
