@@ -1,20 +1,38 @@
 // src/app/(dashboard)/SidebarNav.tsx
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Ticket, Package, LogOut, Loader2, Users, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, Ticket, Package, LogOut, Loader2, Users, FileSpreadsheet, ChevronUp, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion'; // <-- Tambahan framer-motion untuk animasi dropdown
 
-// Tambahkan interface untuk props
 export default function SidebarNav({ userName, userRole }: { userName: string, userRole: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
+  // State untuk Dropdown Profil
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMobileDropdownOpen, setIsMobileDropdownOpen] = useState(false);
+  
+  // Referensi untuk deteksi klik di luar dropdown (opsional tapi bagus buat UX)
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Fungsi tutup dropdown kalau user klik area di luar menu
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsDropdownOpen(false);
+      if (mobileDropdownRef.current && !mobileDropdownRef.current.contains(event.target as Node)) setIsMobileDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Semua Tiket', href: '/tickets', icon: Ticket },
+    { name: 'Manajemen Tiket', href: '/tickets', icon: Ticket }, // <-- Nama disamakan dengan Poin 4
     { name: 'Reports', href: '/reports', icon: FileSpreadsheet },
     { name: 'Manajemen User', href: '/users', icon: Users },
   ];
@@ -32,6 +50,8 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
       setIsLoggingOut(false);
     }
   };
+
+  const initial = userName ? userName.charAt(0).toUpperCase() : '?';
 
   return (
     <>
@@ -65,21 +85,43 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
           })}
         </nav>
 
-        {/* Profil Pengguna & Tombol Logout */}
-        <div className="p-4 border-t border-slate-100/50 shrink-0 bg-white/80">
-          <div className="flex items-center gap-3 mb-4 px-2">
-            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-lg border border-indigo-200 shrink-0">
-              {userName ? userName.charAt(0).toUpperCase() : '?'}
+        {/* IMPROVE POIN 10: Profil Pengguna & Dropdown Logout Desktop */}
+        <div className="relative p-4 border-t border-slate-100/50 shrink-0 bg-white/80" ref={dropdownRef}>
+          <AnimatePresence>
+            {isDropdownOpen && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+                animate={{ opacity: 1, y: 0, scale: 1 }} 
+                exit={{ opacity: 0, y: 10, scale: 0.95 }} 
+                transition={{ duration: 0.2 }}
+                className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.08)] rounded-xl p-2 z-50"
+              >
+                <div className="px-3 py-2 mb-1 border-b border-slate-50">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sesi Aktif</p>
+                </div>
+                <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 font-semibold hover:bg-red-50 rounded-lg transition-colors group disabled:opacity-70 text-sm">
+                  {isLoggingOut ? <Loader2 size={16} className="animate-spin text-red-500" /> : <LogOut size={16} className="text-red-500 group-hover:scale-110 transition-transform" />}
+                  <span>{isLoggingOut ? 'Keluar...' : 'Keluar Sistem'}</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div 
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)} 
+            className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-colors ${isDropdownOpen ? 'bg-slate-50' : 'hover:bg-slate-50'}`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-lg border border-indigo-200 shrink-0">
+                {initial}
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-sm font-bold text-slate-700 truncate">{userName}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{userRole?.replace('_', ' ')}</p>
+              </div>
             </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-bold text-slate-700 truncate">{userName}</p>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{userRole?.replace('_', ' ')}</p>
-            </div>
+            <ChevronUp size={16} className={`text-slate-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
           </div>
-          <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 font-semibold hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors group disabled:opacity-70">
-            {isLoggingOut ? <Loader2 size={18} className="animate-spin text-red-500" /> : <LogOut size={18} className="text-slate-400 group-hover:text-red-500 transition-colors" />}
-            <span>{isLoggingOut ? 'Keluar...' : 'Keluar Sistem'}</span>
-          </button>
         </div>
       </aside>
 
@@ -96,9 +138,36 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Logistik Pusat</p>
           </div>
         </div>
-        {/* Avatar Profil Mobile */}
-        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-sm border border-indigo-200">
-          {userName ? userName.charAt(0).toUpperCase() : '?'}
+
+        {/* IMPROVE POIN 10: Dropdown Logout Mobile */}
+        <div className="relative" ref={mobileDropdownRef}>
+          <div 
+            onClick={() => setIsMobileDropdownOpen(!isMobileDropdownOpen)} 
+            className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-sm border border-indigo-200 cursor-pointer shadow-sm active:scale-95 transition-transform"
+          >
+            {initial}
+          </div>
+
+          <AnimatePresence>
+            {isMobileDropdownOpen && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+                animate={{ opacity: 1, y: 0, scale: 1 }} 
+                exit={{ opacity: 0, y: -10, scale: 0.95 }} 
+                transition={{ duration: 0.2 }}
+                className="absolute top-full right-0 mt-3 w-48 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.1)] rounded-xl p-2 z-50 origin-top-right"
+              >
+                <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                  <p className="text-xs font-bold text-slate-700 truncate">{userName}</p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{userRole?.replace('_', ' ')}</p>
+                </div>
+                <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-2 px-3 py-2.5 text-red-600 font-bold hover:bg-red-50 rounded-lg transition-colors text-xs disabled:opacity-70">
+                  {isLoggingOut ? <Loader2 size={14} className="animate-spin text-red-500" /> : <LogOut size={14} />}
+                  {isLoggingOut ? 'Keluar...' : 'Keluar Sistem'}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -106,12 +175,13 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
           MOBILE BOTTOM NAV 
           ========================================= */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl border-t border-slate-200/60 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
-        <div className="flex flex-wrap justify-around items-center px-2 py-2">
+        <div className="flex justify-around items-center px-2 py-2">
+          {/* Karena tombol logout pindah ke atas, sekarang item menu bisa jadi 25% (lebih lega) */}
           {navItems.map((item) => {
             const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
-              <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center w-[20%] gap-1 active:scale-95 transition-transform my-1">
+              <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center w-[25%] gap-1 active:scale-95 transition-transform my-1">
                 <div className={`p-1.5 rounded-full transition-colors ${isActive ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400'}`}>
                   <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
@@ -119,13 +189,6 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
               </Link>
             );
           })}
-          
-          <button onClick={handleLogout} disabled={isLoggingOut} className="flex flex-col items-center justify-center w-[20%] gap-1 active:scale-95 transition-transform text-slate-400 hover:text-red-500 my-1">
-             <div className="p-1.5 rounded-full transition-colors">
-               {isLoggingOut ? <Loader2 size={20} className="animate-spin text-red-500" /> : <LogOut size={20} />}
-             </div>
-             <span className="text-[8px] sm:text-[9px] font-bold text-center leading-tight">{isLoggingOut ? '...' : 'Keluar'}</span>
-          </button>
         </div>
       </nav>
     </>

@@ -4,16 +4,15 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Loader2, UploadCloud, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, UploadCloud, CheckCircle2, Check } from 'lucide-react'; // <-- Tambahan icon Check
 import imageCompression from 'browser-image-compression';
 
-// 1. Tambahkan typing 'email' opsional untuk MS Teams
 interface PIC {
   id: string;
   name: string;
   initial: string;
   phone?: string | null; 
-  email?: string | null; // <--- WAJIB ADA JIKA PAKAI TEAMS
+  email?: string | null; 
 }
 
 export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
@@ -23,17 +22,19 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
   const todayLocal = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
+  // 1. UPDATE STATE: Tambah email pemohon & ubah notifikasi jadi array
   const [formData, setFormData] = useState({
     requestDate: todayLocal, 
     mediaRequest: 'Lisan / Verbal',
     branchName: '',
     requesterName: '', 
+    requesterEmail: '', // <--- STATE BARU
     category: '',
     picId: '',
     title: '', 
     description: '',
     issueImgUrl: '',
-    notificationMethod: 'teams' // <--- Set 'teams' sebagai default (bisa ubah ke 'whatsapp')
+    notificationMethods: ['teams', 'email'] // <--- Default checklist (Array)
   });
 
   const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL'];
@@ -46,6 +47,16 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
     if (formData.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial);
     return false;
   });
+
+  // Fungsi toggle checklist notifikasi
+  const toggleNotification = (method: string) => {
+    setFormData(prev => ({
+      ...prev,
+      notificationMethods: prev.notificationMethods.includes(method)
+        ? prev.notificationMethods.filter(m => m !== method) // Kalo udah ada, hapus (uncheck)
+        : [...prev.notificationMethods, method] // Kalo belum ada, tambah (check)
+    }));
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -98,7 +109,12 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
     setIsLoading(true);
 
     try {
-      const finalPayload = { ...formData, title: titleReal, description: descReal };
+      // 2. INCLUDE REQUESTER EMAIL KE PAYLOAD
+      const finalPayload = { 
+        ...formData, 
+        title: titleReal, 
+        description: descReal 
+      };
 
       const res = await fetch('/api/tickets', {
         method: 'POST',
@@ -113,34 +129,46 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
         
         if (selectedPic) {
           const ticketNum = data.ticket?.ticketNumber || 'Terbaru';
-          
           const baseUrl = window.location.origin; 
-          const defaultPassword = 'password123'; 
-          const loginLink = `${baseUrl}/login?nip=${selectedPic.initial}&pwd=${defaultPassword}`;
+          const loginLink = `${baseUrl}/login?nip=${selectedPic.initial}&pwd=password123`;
           
-          // Template Notifikasi (Bisa untuk WA maupun Teams)
-          const notifText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticketNum}\n*Kategori:* ${formData.category}\n*Cabang/Unit:* ${formData.branchName}\n*Pemohon:* ${formData.requesterName}\n*Perihal:* ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses (In Progress) melalui link login otomatis berikut:\n${loginLink}\n\nSemangat! 💪`;
+          // 3. SEPARASI TEMPLATE (PIC vs PEMOHON)
           
-          // --- LOGIKA CABANG NOTIFIKASI (WA vs TEAMS) ---
-          if (formData.notificationMethod === 'whatsapp') {
+          // Template A: Untuk PIC (WA & Teams) - Casual/Internal
+          const picText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticketNum}\n*Kategori:* ${formData.category}\n*Cabang/Unit:* ${formData.branchName}\n*Pemohon:* ${formData.requesterName}\n*Perihal:* ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
+          
+          // Template B: Untuk Pemohon (Email) - Formal/Eksternal Dept
+          const emailSubject = `Konfirmasi Tiket Layanan Logistik: ${ticketNum} - ${titleReal}`;
+          const emailBody = `Yth. Bapak/Ibu ${formData.requesterName},\n\nTerima kasih telah menghubungi Layanan Hotline Logistik BCA Syariah.\n\nBerikut adalah ringkasan tiket Anda yang telah kami terima dan masuk ke dalam antrean pengerjaan tim kami:\n\n- No. Tiket: ${ticketNum}\n- Kategori: ${formData.category}\n- Cabang/Unit: ${formData.branchName}\n- Perihal: ${titleReal}\n- Deskripsi: ${descReal}\n- PIC Bertugas: ${selectedPic.name}\n\nKami akan segera menindaklanjuti permintaan ini sesuai dengan Standard Service Level Agreement (SLA) yang berlaku. Apabila ada informasi tambahan, PIC kami akan menghubungi Anda kembali.\n\nSalam,\nDepartemen Logistik BCA Syariah`;
+
+          // 4. EKSEKUSI MULTI-NOTIFIKASI BERDASARKAN CHECKLIST
+          const methods = formData.notificationMethods;
+
+          // Eksekusi WA PIC
+          if (methods.includes('whatsapp')) {
             if (selectedPic.phone) {
               let waNumber = selectedPic.phone.replace(/[^0-9]/g, '');
               if (waNumber.startsWith('0')) waNumber = '62' + waNumber.substring(1);
-              const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(notifText)}`;
-              window.open(waUrl, '_blank');
+              window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(picText)}`, '_blank');
             } else {
-              alert("Info: Nomor HP PIC tidak terdaftar di sistem. Notif WA dilewati.");
+              alert("Info: Nomor HP PIC tidak terdaftar. Notif WA dilewati.");
             }
-          } else if (formData.notificationMethod === 'teams') {
+          } 
+          
+          // Eksekusi Teams PIC
+          if (methods.includes('teams')) {
             if (selectedPic.email) {
-              // Format Deep Link MS Teams Chat
-              const teamsUrl = `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(selectedPic.email)}&message=${encodeURIComponent(notifText)}`;
-              window.open(teamsUrl, '_blank');
+              window.open(`https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(selectedPic.email)}&message=${encodeURIComponent(picText)}`, '_blank');
             } else {
-              alert("Info: Email PIC tidak terdaftar di sistem. Notif MS Teams dilewati.");
+              alert("Info: Email PIC tidak terdaftar. Notif MS Teams dilewati.");
             }
           }
-          // ---------------------------------------------
+
+          // Eksekusi Email Pemohon
+          if (methods.includes('email') && formData.requesterEmail) {
+            // Pakai _self supaya buka default mail client (Outlook/Gmail) di laptop admin
+            window.open(`mailto:${formData.requesterEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_self');
+          }
         }
 
         router.push('/tickets');
@@ -161,8 +189,8 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
         <button onClick={() => router.back()} className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition-colors font-bold text-sm mb-4">
           <ArrowLeft size={16} /> Kembali
         </button>
-        <h2 className="text-2xl font-black text-slate-800 tracking-tight">Buat Tiket Baru</h2>
-        <p className="text-slate-500 mt-1 font-medium text-xs">Pusat penugasan Internal Departemen Logistik.</p>
+        <h2 className="text-2xl font-black text-slate-800 tracking-tight">BUAT TIKET BARU</h2>
+        <p className="text-slate-500 mt-1 font-medium text-xs">Pusat Penugasan Internal Departemen Logistik.</p>
       </motion.div>
 
       <motion.form
@@ -174,9 +202,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Tanggal Permintaan</label>
             <input 
-              required 
-              type="date" 
-              max={todayLocal} 
+              required type="date" max={todayLocal} 
               value={formData.requestDate} 
               onChange={(e) => setFormData({ ...formData, requestDate: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
@@ -191,19 +217,34 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
               <option value="Lisan / Verbal">Lisan / Verbal</option>
               <option value="Email">Email</option>
               <option value="Memo / Form Fisik">Memo / Form Fisik</option>
+              <option value="Teams Form">Teams Form</option>
             </select>
           </div>
 
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Cabang / Unit Pemohon</label>
-            <input required type="text" placeholder="Contoh: KCP Depok" value={formData.branchName} onChange={(e) => setFormData({ ...formData, branchName: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
+            <input 
+              required type="text" placeholder="Contoh: KCP DEPOK" 
+              value={formData.branchName} 
+              onChange={(e) => setFormData({ ...formData, branchName: e.target.value.toUpperCase() })} // <-- ALL CAPS Logic
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700 uppercase"
             />
           </div>
 
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Nama Pemohon</label>
             <input required type="text" placeholder="Contoh: Budi Santoso" value={formData.requesterName} onChange={(e) => setFormData({ ...formData, requesterName: e.target.value })}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
+            />
+          </div>
+
+          {/* INPUT BARU: EMAIL PEMOHON */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
+              <span>Email Pemohon</span>
+              <span className="text-slate-400 font-normal lowercase">(Untuk notif tiket)</span>
+            </label>
+            <input required type="email" placeholder="Contoh: budi_santoso@bcasyariah.co.id" value={formData.requesterEmail} onChange={(e) => setFormData({ ...formData, requesterEmail: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
             />
           </div>
@@ -286,33 +327,41 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
           )}
         </div>
 
-        {/* BAGIAN BARU: PEMILIHAN METODE NOTIFIKASI */}
+        {/* UPDATE: UI CHECKLIST MULTI-SELECT NOTIFIKASI */}
         <div className="space-y-3 pt-6 border-t border-slate-100">
-          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Kirim Notifikasi Tugas Via</label>
-          <div className="grid grid-cols-2 gap-4">
-            <div 
-              onClick={() => setFormData({ ...formData, notificationMethod: 'teams' })}
-              className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                formData.notificationMethod === 'teams' ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-300 bg-slate-50'
-              }`}
-            >
-              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${formData.notificationMethod === 'teams' ? 'border-indigo-500' : 'border-slate-300'}`}>
-                {formData.notificationMethod === 'teams' && <div className="w-2 h-2 bg-indigo-500 rounded-full" />}
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Kirim Notifikasi Tugas Via (Bisa Pilih > 1)</label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <div onClick={() => toggleNotification('teams')} className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${formData.notificationMethods.includes('teams') ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-300 bg-slate-50'}`}>
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${formData.notificationMethods.includes('teams') ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300 bg-white'}`}>
+                {formData.notificationMethods.includes('teams') && <Check size={14} className="text-white" strokeWidth={3} />}
               </div>
-              <span className={`text-sm font-bold ${formData.notificationMethod === 'teams' ? 'text-indigo-700' : 'text-slate-500'}`}>MS Teams</span>
+              <div className="flex flex-col">
+                <span className={`text-sm font-bold ${formData.notificationMethods.includes('teams') ? 'text-indigo-700' : 'text-slate-600'}`}>MS Teams</span>
+                <span className="text-[10px] font-medium text-slate-400">Ke PIC Bertugas</span>
+              </div>
             </div>
 
-            <div 
-              onClick={() => setFormData({ ...formData, notificationMethod: 'whatsapp' })}
-              className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                formData.notificationMethod === 'whatsapp' ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-200 hover:border-emerald-300 bg-slate-50'
-              }`}
-            >
-              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${formData.notificationMethod === 'whatsapp' ? 'border-emerald-500' : 'border-slate-300'}`}>
-                {formData.notificationMethod === 'whatsapp' && <div className="w-2 h-2 bg-emerald-500 rounded-full" />}
+            <div onClick={() => toggleNotification('whatsapp')} className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${formData.notificationMethods.includes('whatsapp') ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-200 hover:border-emerald-300 bg-slate-50'}`}>
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${formData.notificationMethods.includes('whatsapp') ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300 bg-white'}`}>
+                {formData.notificationMethods.includes('whatsapp') && <Check size={14} className="text-white" strokeWidth={3} />}
               </div>
-              <span className={`text-sm font-bold ${formData.notificationMethod === 'whatsapp' ? 'text-emerald-700' : 'text-slate-500'}`}>WhatsApp</span>
+              <div className="flex flex-col">
+                <span className={`text-sm font-bold ${formData.notificationMethods.includes('whatsapp') ? 'text-emerald-700' : 'text-slate-600'}`}>WhatsApp</span>
+                <span className="text-[10px] font-medium text-slate-400">Ke PIC Bertugas</span>
+              </div>
             </div>
+
+            <div onClick={() => toggleNotification('email')} className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${formData.notificationMethods.includes('email') ? 'border-blue-500 bg-blue-50/50' : 'border-slate-200 hover:border-blue-300 bg-slate-50'}`}>
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${formData.notificationMethods.includes('email') ? 'border-blue-500 bg-blue-500' : 'border-slate-300 bg-white'}`}>
+                {formData.notificationMethods.includes('email') && <Check size={14} className="text-white" strokeWidth={3} />}
+              </div>
+              <div className="flex flex-col">
+                <span className={`text-sm font-bold ${formData.notificationMethods.includes('email') ? 'text-blue-700' : 'text-slate-600'}`}>Email Outlook</span>
+                <span className="text-[10px] font-medium text-slate-400">Ke Cabang / Pemohon</span>
+              </div>
+            </div>
+
           </div>
         </div>
 

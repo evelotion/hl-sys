@@ -4,26 +4,24 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Save, Loader2, X, Calendar, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Save, Loader2, X, Calendar, Clock, CheckCircle2, AlertCircle, UploadCloud, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import imageCompression from 'browser-image-compression'; // <-- Tambahan untuk Poin 3
 
 export default function TaskViewClient({ initialTicket, pics, currentUser }: { initialTicket: any, pics: any[], currentUser: any }) {
   const router = useRouter();
   
-  // State Utama dengan type casting 'as any' biar terhindar dari type inference parsial
   const [ticket, setTicket] = useState<any>(initialTicket || {});
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isUploading, setIsUploading] = useState(false); // <-- State Upload Poin 3
   
-  // State untuk chat/komentar log
   const [comment, setComment] = useState('');
   const [isCommenting, setIsCommenting] = useState(false);
 
-  // Helper untuk mendapatkan tanggal lokal hari ini (menghindari bug UTC)
   const todayLocal = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
-  // State untuk form edit pakai Optional Chaining (?.) biar anti-crash
   const [editForm, setEditForm] = useState({
     title: ticket?.title || '',
     description: ticket?.description || '',
@@ -46,7 +44,28 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     return false;
   }) || [];
 
-  // Fungsi nambah komentar (Activity Log)
+  // LOGIC UPLOAD GAMBAR BARU (Poin 3)
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const options = { maxSizeMB: 1, maxWidthOrHeight: 1024, useWebWorker: true };
+      const compressedFile = await imageCompression(file, options);
+      const uploadData = new FormData();
+      uploadData.append('file', compressedFile);
+      uploadData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'hl_sys_preset');
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: uploadData });
+      const data = await res.json();
+      if (data.secure_url) setEditForm({ ...editForm, issueImgUrl: data.secure_url });
+    } catch (error) {
+      toast.error("Gagal mengunggah file baru.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!comment.trim()) return;
@@ -69,7 +88,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     }
   };
 
-  // Fungsi simpan Edit (PATCH)
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -83,7 +101,22 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       if (data.success) {
         setTicket({ ...ticket, ...data.ticket });
         setIsEditOpen(false);
-        toast.success('Perubahan tiket berhasil disimpan!', { style: { borderRadius: '12px', background: '#333', color: '#fff' } });
+        toast.success('Perubahan berhasil disimpan!', { style: { borderRadius: '12px', background: '#333', color: '#fff' } });
+        
+        // IMPROVE POIN 1: NOTIFIKASI MS TEAMS UNTUK RE-ASSIGNMENT
+        if (data.isReassigned && data.ticket.pic) {
+           const newPic = data.ticket.pic;
+           const isSendNotif = window.confirm(`Tiket di-reassign ke ${newPic.name}. Ingin kirim notifikasi penugasan ke MS Teams yang bersangkutan?`);
+           if (isSendNotif && newPic.email) {
+              const loginLink = `${window.location.origin}/login?nip=${newPic.initial}&pwd=password123`;
+              const notifText = `*🚨 RE-ASSIGNMENT TUGAS HL-SYS 🚨*\n\nHalo ${newPic.name}, ada tugas logistik yang baru saja dialihkan/di-reassign ke kamu nih:\n\n*No. Tiket:* ${ticket.ticketNumber}\n*Kategori:* ${data.ticket.category}\n*Perihal:* ${data.ticket.title}\n\nSegera cek detail pekerjaan di sistem:\n${loginLink}`;
+              const teamsUrl = `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(newPic.email)}&message=${encodeURIComponent(notifText)}`;
+              window.open(teamsUrl, '_blank');
+           } else if (isSendNotif && !newPic.email) {
+              toast.error(`Gagal mengirim Teams. Email ${newPic.name} belum terdaftar di sistem.`);
+           }
+        }
+        
         router.refresh();
       }
     } catch (error) {
@@ -93,7 +126,27 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     }
   };
 
-  // Fungsi update status (Untuk PIC logistik lapor selesai)
+  // IMPROVE POIN 6: HANDLE DELETE TICKET
+  const handleDeleteTicket = async () => {
+    if (!window.confirm("⚠️ PERINGATAN: Anda yakin ingin menghapus tiket ini secara permanen? Seluruh riwayat akan hilang dan tidak dapat dikembalikan.")) return;
+    
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/tickets/${ticket.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success("Tiket berhasil dihapus!");
+        router.push('/tickets');
+        router.refresh();
+      } else {
+        toast.error("Gagal menghapus tiket dari database.");
+      }
+    } catch (error) {
+      toast.error("Terjadi kesalahan sistem.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleUpdateStatus = async (newStatus: string) => {
     setIsUpdatingStatus(true);
     try {
@@ -115,13 +168,11 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     }
   };
 
-  // Format Tanggal
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
-  // Cek apakah SLA sudah lewat
   const isOverdue = ticket?.slaDeadline && new Date() > new Date(ticket.slaDeadline) && ticket?.status !== 'DONE';
 
   return (
@@ -192,14 +243,14 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
           </div>
 
           {ticket?.issueImgUrl && (
-  <div className="bg-white p-6 rounded-[24px] border border-slate-200/60 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-    <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><CheckCircle2 size={16}/> File Pendukung (Bukti)</h3>
-    <a href={ticket.issueImgUrl} target="_blank" rel="noopener noreferrer" className="block w-full md:w-1/2 rounded-xl border border-slate-200 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer">
-      <img src={ticket.issueImgUrl} alt="Bukti" className="w-full h-auto" />
-    </a>
-    <p className="text-[10px] text-slate-400 mt-2 font-medium italic">*Klik gambar untuk melihat dokumen penuh.</p>
-  </div>
-)}
+            <div className="bg-white p-6 rounded-[24px] border border-slate-200/60 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
+              <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><CheckCircle2 size={16}/> File Pendukung (Bukti)</h3>
+              <a href={ticket.issueImgUrl} target="_blank" rel="noopener noreferrer" className="block w-full md:w-1/2 rounded-xl border border-slate-200 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer">
+                <img src={ticket.issueImgUrl} alt="Bukti" className="w-full h-auto" />
+              </a>
+              <p className="text-[10px] text-slate-400 mt-2 font-medium italic">*Klik gambar untuk melihat dokumen penuh.</p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -257,62 +308,82 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       <AnimatePresence>
         {isEditOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[24px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden border border-slate-100">
-              <div className="sticky top-0 bg-white/90 backdrop-blur-md px-6 py-4 border-b border-slate-100 flex items-center justify-between z-10">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[24px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden border border-slate-100 flex flex-col">
+              <div className="sticky top-0 bg-white/90 backdrop-blur-md px-6 py-4 border-b border-slate-100 flex items-center justify-between z-10 shrink-0">
                 <h2 className="text-lg font-black text-slate-800">Edit Tiket {ticket?.ticketNumber}</h2>
                 <button onClick={() => setIsEditOpen(false)} className="p-2 bg-slate-50 text-slate-500 hover:text-red-500 rounded-full transition-colors"><X size={20}/></button>
               </div>
               
-              <form onSubmit={handleSaveEdit} className="p-6 space-y-5">
-                <div className="space-y-1 border-b border-slate-100 pb-4">
-                  <label className="text-xs font-bold text-slate-500">Tanggal Permintaan (Request Date)</label>
-                  <input 
-                    type="date" 
-                    required 
-                    max={todayLocal} // <--- Tambahan limit max disini
-                    value={editForm.requestDate} 
-                    onChange={(e) => setEditForm({ ...editForm, requestDate: e.target.value })} 
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300" 
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">Kategori</label>
-                    <select value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value, picId: '' })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300">
-                      <option value="P3">P3 (Pemeliharaan & Aset)</option>
-                      <option value="Pengadaan">Pengadaan (Pembelian)</option>
-                      <option value="Pembayaran">Pembayaran</option>
-                    </select>
+              <div className="p-6 overflow-y-auto flex-1">
+                <form id="edit-form" onSubmit={handleSaveEdit} className="space-y-5">
+                  <div className="space-y-1 border-b border-slate-100 pb-4">
+                    <label className="text-xs font-bold text-slate-500">Tanggal Permintaan</label>
+                    <input type="date" required max={todayLocal} value={editForm.requestDate} onChange={(e) => setEditForm({ ...editForm, requestDate: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300" />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">Ubah PIC</label>
-                    <select value={editForm.picId} onChange={(e) => setEditForm({ ...editForm, picId: e.target.value })} className="w-full px-3 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl text-sm font-bold outline-none focus:border-indigo-300">
-                      <option value="" disabled>-- Pilih PIC Baru --</option>
-                      {filteredPics.map((pic: any) => (
-                        <option key={pic.id} value={pic.id}>{pic.name} ({pic.initial})</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500">Perihal (Judul)</label>
-                  <input type="text" required value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300" />
-                </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-500">Kategori</label>
+                      <select value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value, picId: '' })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300">
+                        <option value="P3">P3 (Pemeliharaan & Aset)</option>
+                        <option value="Pengadaan">Pengadaan (Pembelian)</option>
+                        <option value="Pembayaran">Pembayaran</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-500">Ubah PIC</label>
+                      <select value={editForm.picId} onChange={(e) => setEditForm({ ...editForm, picId: e.target.value })} className="w-full px-3 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl text-sm font-bold outline-none focus:border-indigo-300">
+                        <option value="" disabled>-- Pilih PIC Baru --</option>
+                        {filteredPics.map((pic: any) => (
+                          <option key={pic.id} value={pic.id}>{pic.name} ({pic.initial})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500">Perihal (Judul)</label>
+                    <input type="text" required value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300" />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500">Deskripsi Masalah</label>
+                    <textarea required rows={3} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300 resize-none"></textarea>
+                  </div>
+
+                  {/* IMPROVE POIN 3: FITUR UBAH/TAMBAH GAMBAR DI MODAL EDIT */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500">File Pendukung (Opsional)</label>
+                    {!editForm.issueImgUrl ? (
+                      <label className={`flex items-center justify-center w-full p-4 border-2 border-dashed rounded-xl cursor-pointer transition-all ${isUploading ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50'}`}>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
+                        {isUploading ? <span className="text-sm font-bold text-indigo-600 flex items-center gap-2"><Loader2 className="animate-spin" size={16}/> Uploading...</span> : <span className="text-sm font-semibold text-slate-500 flex items-center gap-2"><UploadCloud size={16}/> Klik untuk Upload File Baru</span>}
+                      </label>
+                    ) : (
+                      <div className="relative rounded-xl overflow-hidden border border-slate-200 shadow-sm w-full md:w-1/2 h-32 group">
+                        <img src={editForm.issueImgUrl} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                          <button type="button" onClick={() => setEditForm({...editForm, issueImgUrl: ''})} className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs rounded-lg transition-colors">Hapus & Ganti</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
+                {/* IMPROVE POIN 6: TOMBOL HAPUS TIKET */}
+                <button type="button" onClick={handleDeleteTicket} disabled={isSaving} className="flex items-center gap-1.5 px-4 py-2 text-red-500 font-bold hover:bg-red-100 rounded-xl transition-colors text-xs disabled:opacity-50">
+                  <Trash2 size={14} /> Hapus Tiket
+                </button>
                 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500">Deskripsi Masalah</label>
-                  <textarea required rows={3} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300 resize-none"></textarea>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                  <button type="button" onClick={() => setIsEditOpen(false)} className="px-5 py-2.5 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors text-sm">Batal</button>
-                  <button type="submit" disabled={isSaving} className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-colors disabled:opacity-70 text-sm">
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setIsEditOpen(false)} className="px-5 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors text-sm">Batal</button>
+                  <button form="edit-form" type="submit" disabled={isSaving || isUploading} className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-colors disabled:opacity-70 text-sm">
                     {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Simpan Perubahan
                   </button>
                 </div>
-              </form>
+              </div>
             </motion.div>
           </div>
         )}

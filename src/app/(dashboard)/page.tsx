@@ -22,36 +22,64 @@ export default async function DashboardPage() {
   const onProgress = await db.ticket.count({ where: { ...whereBase, status: 'IN_PROGRESS' } });
   const completed = await db.ticket.count({ where: { ...whereBase, status: 'DONE' } });
 
-  // 2. SLA Tracking
-  const completedTickets = await db.ticket.findMany({
-    where: { ...whereBase, status: 'DONE' },
-    select: { createdAt: true, resolvedAt: true, slaDeadline: true }
+  // 2. SLA Tracking (IMPROVE POIN 8: Berdasarkan Total Request)
+  const allTicketsForSLA = await db.ticket.findMany({
+    where: whereBase,
+    select: { createdAt: true, resolvedAt: true, slaDeadline: true, status: true }
   });
 
   let slaOnTimePercentage = 100;
-  if (completedTickets.length > 0) {
-    const onTimeTickets = completedTickets.filter(t => {
-      if (!t.resolvedAt || !t.slaDeadline) return false;
-      return t.resolvedAt.getTime() <= t.slaDeadline.getTime(); 
-    }).length;
-    slaOnTimePercentage = Math.round((onTimeTickets / completedTickets.length) * 100);
-  } else if (totalRequest > 0 && completed === 0) {
-    slaOnTimePercentage = 0; 
+  if (totalRequest > 0) {
+    const now = new Date();
+    let overdueCount = 0;
+    
+    allTicketsForSLA.forEach(t => {
+      if (t.slaDeadline) {
+        // Jika sudah selesai, cek apakah selesainya telat
+        if (t.status === 'DONE' && t.resolvedAt && t.resolvedAt > t.slaDeadline) {
+          overdueCount++;
+        } 
+        // Jika belum selesai, cek apakah hari ini sudah melebihi deadline
+        else if (t.status !== 'DONE' && now > t.slaDeadline) {
+          overdueCount++;
+        }
+      }
+    });
+
+    const onTimeCount = totalRequest - overdueCount;
+    slaOnTimePercentage = Math.round((onTimeCount / totalRequest) * 100);
+  } else {
+    slaOnTimePercentage = 0;
   }
 
-  // 3. Beban Kerja PIC
+  // 3. Beban Kerja PIC (IMPROVE POIN 7: Susun Berdasarkan Kategori)
   const pics = await db.user.findMany({
     where: { role: 'PIC_LOGISTIK' },
     include: { tasks: true }
   });
 
-  const picWorkload = pics.map((pic: any) => {
+  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL'];
+  const pembayaranInitials = ['RIN', 'ETK', 'RKS', 'RLY'];
+  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
+
+  const picWorkload = {
+    P3: [] as any[],
+    Pengadaan: [] as any[],
+    Pembayaran: [] as any[],
+    Lainnya: [] as any[]
+  };
+
+  pics.forEach((pic: any) => {
     const activeTasks = pic.tasks.filter((t: any) => t.status !== 'DONE').length;
     const completedTasks = pic.tasks.filter((t: any) => t.status === 'DONE').length;
-    return { name: pic.name, activeTasks, completed: completedTasks };
+    const picData = { name: pic.name, initial: pic.initial, activeTasks, completed: completedTasks };
+    
+    if (p3Initials.includes(pic.initial)) picWorkload.P3.push(picData);
+    else if (pengadaanInitials.includes(pic.initial)) picWorkload.Pengadaan.push(picData);
+    else if (pembayaranInitials.includes(pic.initial)) picWorkload.Pembayaran.push(picData);
+    else picWorkload.Lainnya.push(picData);
   });
 
-  // Helper Fungsi Biar Kode Rapih & Gak Berulang
   const formatTicketData = (t: any) => {
     let progress = 25; 
     if (t.status === 'IN_PROGRESS') progress = 65;
@@ -70,13 +98,9 @@ export default async function DashboardPage() {
        if (sla < 0) sla = 0;
     }
 
-    let displayStatus = 'REQUEST';
-    if (t.status === 'IN_PROGRESS') displayStatus = 'ON PROGRESS';
-    if (t.status === 'DONE') displayStatus = 'COMPLETED';
-
     return {
       id: t.ticketNumber,
-      status: displayStatus,
+      status: t.status === 'IN_PROGRESS' ? 'ON PROGRESS' : (t.status === 'DONE' ? 'COMPLETED' : 'REQUEST'),
       progress: progress,
       sla: sla,
       pic: t.pic?.initial || 'N/A',
@@ -87,15 +111,13 @@ export default async function DashboardPage() {
     };
   };
 
-  // 4. Cari Tiket SLA Paling Kritis (Belum selesai, deadline terdekat)
   const urgentDataRes = await db.ticket.findFirst({
     where: { ...whereBase, status: { not: 'DONE' }, slaDeadline: { not: null } },
-    orderBy: { slaDeadline: 'asc' }, // Cari deadline yang paling awal/dekat
+    orderBy: { slaDeadline: 'asc' },
     include: { pic: true }
   });
   const urgentTicket = urgentDataRes ? formatTicketData(urgentDataRes) : null;
 
-  // 5. Cari 5 Tiket Terbaru
   const recentData = await db.ticket.findMany({
     where: whereBase,
     orderBy: { createdAt: 'desc' },
@@ -115,7 +137,7 @@ export default async function DashboardPage() {
       userRole={user.role} 
       userName={user.name}
       recentTickets={recentTickets}
-      urgentTicket={urgentTicket} // <-- Lempar tiket urgent ke Client
+      urgentTicket={urgentTicket} 
     />
   );
 }

@@ -1,6 +1,6 @@
 // hl-sys/src/app/api/tickets/route.ts
 import { NextResponse } from 'next/server';
-import { db } from '@/src/lib/db'; 
+import { db } from '@/src/lib/db';
 
 function addDays(date: Date, days: number) {
   const result = new Date(date);
@@ -11,16 +11,17 @@ function addDays(date: Date, days: number) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    // Tambahin requesterName di sini
-    const { title, description, category, branchName, requesterName, picId, requestDate, mediaRequest, issueImgUrl } = body;
-
+    
+    // 1. TAMBAH requesterEmail di destructuring ini bro
+    const { title, description, category, branchName, requesterName, requesterEmail, picId, requestDate, mediaRequest, issueImgUrl } = body;
+    
     const year = new Date().getFullYear();
     const count = await db.ticket.count();
     const ticketNumber = `LOG-${year}-${String(count + 1).padStart(4, '0')}`;
-
-    const baseDate = requestDate ? new Date(requestDate) : new Date();
     
+    const baseDate = requestDate ? new Date(requestDate) : new Date();
     let deadline = new Date(baseDate);
+    
     if (category === 'P3') {
       deadline = addDays(baseDate, 3);
     } else if (category === 'Pembayaran') {
@@ -28,20 +29,21 @@ export async function POST(request: Request) {
     } else if (category === 'Pengadaan') {
       deadline = addDays(baseDate, 14);
     } else {
-      deadline = addDays(baseDate, 1); 
+      deadline = addDays(baseDate, 1);
     }
 
     const newTicket = await db.ticket.create({
       data: {
         ticketNumber,
-        title, 
+        title,
         description,
         category,
         branchName,
-        requesterName, // <-- Masukin ke payload database
+        requesterName, 
+        requesterEmail, // <-- 2. TAMBAHIN JUGA DI SINI BIAR MASUK KE DATABASE
         mediaRequest,
         requestDate: baseDate,
-        slaDeadline: deadline, 
+        slaDeadline: deadline,
         issueImgUrl,
         picId: picId || null,
         status: 'OPEN',

@@ -13,7 +13,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const body = await request.json();
     const resolvedParams = await params;
     const ticketId = resolvedParams.id;
-    const userId = body.userId; // Ambil ID user yang lagi login
+    const userId = body.userId; 
 
     // 1. UPDATE STATUS
     if (body.action === 'UPDATE_STATUS') {
@@ -21,7 +21,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         where: { id: ticketId },
         data: { status: body.status, resolvedAt: body.status === 'DONE' ? new Date() : null }
       });
-      // Catat log otomatis
       if (userId) {
         await db.activityLog.create({
           data: { ticketId, userId, action: 'SYSTEM', message: `Mengubah status menjadi ${body.status.replace('_', ' ')}` }
@@ -41,8 +40,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     // 3. FULL EDIT DARI ADM
     const { title, description, category, branchName, picId, requestDate, mediaRequest, issueImgUrl } = body;
     
-    // Cek kategori lama buat log
-    const oldTicket = await db.ticket.findUnique({ where: { id: ticketId } });
+    // AMBIL TIKET LAMA (Termasuk data PIC lama)
+    const oldTicket = await db.ticket.findUnique({ 
+      where: { id: ticketId },
+      include: { pic: true } 
+    });
     
     const baseDate = requestDate ? new Date(requestDate) : new Date();
     let deadline = new Date(baseDate);
@@ -51,21 +53,58 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     else if (category === 'Pengadaan') deadline = addDays(baseDate, 14);
     else deadline = addDays(baseDate, 1);
 
+    // UPDATE TIKET & AMBIL NAMA PIC BARU
     const updatedTicket = await db.ticket.update({
       where: { id: ticketId },
       data: { title, description, category, branchName, mediaRequest, requestDate: baseDate, slaDeadline: deadline, issueImgUrl, picId: picId || null },
+      include: { pic: true } // <-- Tambahan agar response balikan bawa data PIC baru
     });
 
-    // Catat log otomatis jika kategori diganti
-    if (userId && oldTicket?.category !== category) {
-      await db.activityLog.create({
-        data: { ticketId, userId, action: 'SYSTEM', message: `Mengubah Kategori dari ${oldTicket?.category} menjadi ${category}` }
-      });
+    // CATAT LOG OTOMATIS
+    if (userId) {
+      if (oldTicket?.category !== category) {
+        await db.activityLog.create({
+          data: { ticketId, userId, action: 'SYSTEM', message: `Mengubah Kategori dari ${oldTicket?.category} menjadi ${category}` }
+        });
+      }
+
+      // IMPROVE POIN 2: REKAM JEJAK RE-ASSIGNMENT
+      if (oldTicket?.picId !== picId) {
+        const oldPicName = oldTicket?.pic?.name || 'Belum di-assign';
+        const newPicName = updatedTicket.pic?.name || 'Belum di-assign';
+        await db.activityLog.create({
+          data: { ticketId, userId, action: 'SYSTEM', message: `Re-assign PIC dari ${oldPicName} menjadi ${newPicName}` }
+        });
+      }
     }
 
-    return NextResponse.json({ success: true, ticket: updatedTicket });
+    // Return flag isReassigned agar Frontend tahu kapan harus nembak notifikasi
+    return NextResponse.json({ 
+      success: true, 
+      ticket: updatedTicket, 
+      isReassigned: oldTicket?.picId !== picId 
+    });
   } catch (error) {
     console.error("Error update ticket:", error);
     return NextResponse.json({ error: "Gagal mengupdate tiket" }, { status: 500 });
+  }
+}
+
+// IMPROVE POIN 6: FUNGSI HAPUS TIKET SECARA PERMANEN
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const resolvedParams = await params;
+    const ticketId = resolvedParams.id;
+    
+    // Hapus Log Aktivitasnya dulu biar relasinya gak error
+    await db.activityLog.deleteMany({ where: { ticketId } });
+    
+    // Baru hapus Tiketnya
+    await db.ticket.delete({ where: { id: ticketId } });
+    
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error delete ticket:", error);
+    return NextResponse.json({ error: "Gagal menghapus tiket" }, { status: 500 });
   }
 }

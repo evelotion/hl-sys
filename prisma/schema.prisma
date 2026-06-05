@@ -30,6 +30,7 @@ model Ticket {
   proofImgUrl   String?
   branchName    String
   requesterName String?
+  requesterEmail String?
   mediaRequest  String?   
   requestDate   DateTime? 
   slaDeadline   DateTime?
