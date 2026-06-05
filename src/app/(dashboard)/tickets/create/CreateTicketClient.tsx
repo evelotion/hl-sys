@@ -11,8 +11,8 @@ interface PIC {
   id: string;
   name: string;
   initial: string;
-  phone?: string | null; 
-  email?: string | null; 
+  phone?: string | null;
+  email?: string | null;
 }
 
 export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
@@ -24,14 +24,14 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
   // 1. UPDATE STATE: Tambah email pemohon & ubah notifikasi jadi array
   const [formData, setFormData] = useState({
-    requestDate: todayLocal, 
+    requestDate: todayLocal,
     mediaRequest: 'Lisan / Verbal',
     branchName: '',
-    requesterName: '', 
+    requesterName: '',
     requesterEmail: '', // <--- STATE BARU
     category: '',
     picId: '',
-    title: '', 
+    title: '',
     description: '',
     issueImgUrl: '',
     notificationMethods: ['teams', 'email'] // <--- Default checklist (Array)
@@ -39,7 +39,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
   const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL'];
   const pembayaranInitials = ['RIN', 'ETK', 'RKS', 'RLY'];
-  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS']; 
+  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
   const filteredPics = pics.filter(pic => {
     if (formData.category === 'P3') return p3Initials.includes(pic.initial);
@@ -85,7 +85,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const titleReal = formData.title.trim();
     const descReal = formData.description.trim();
 
@@ -97,8 +97,8 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
       alert("⚠️ Deskripsi harus diisi minimal 10 karakter huruf/angka!");
       return;
     }
-    if (formData.mediaRequest !== 'Lisan / Verbal' && !formData.issueImgUrl) {
-      alert("⚠️ File pendukung WAJIB di-upload jika media request bukan Lisan / Verbal!");
+    if (formData.mediaRequest !== 'Lisan / Verbal' && formData.mediaRequest !== 'Teams Form' && !formData.issueImgUrl) {
+      alert("⚠️ File pendukung WAJIB di-upload jika media request bukan Lisan / Verbal atau Teams Form!");
       return;
     }
     if (!formData.category || !formData.picId) {
@@ -110,10 +110,10 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
     try {
       // 2. INCLUDE REQUESTER EMAIL KE PAYLOAD
-      const finalPayload = { 
-        ...formData, 
-        title: titleReal, 
-        description: descReal 
+      const finalPayload = {
+        ...formData,
+        title: titleReal,
+        description: descReal
       };
 
       const res = await fetch('/api/tickets', {
@@ -126,17 +126,17 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
       if (res.ok) {
         const selectedPic = pics.find(p => p.id === formData.picId);
-        
+
         if (selectedPic) {
           const ticketNum = data.ticket?.ticketNumber || 'Terbaru';
-          const baseUrl = window.location.origin; 
+          const baseUrl = window.location.origin;
           const loginLink = `${baseUrl}/login?nip=${selectedPic.initial}&pwd=password123`;
-          
+
           // 3. SEPARASI TEMPLATE (PIC vs PEMOHON)
-          
+
           // Template A: Untuk PIC (WA & Teams) - Casual/Internal
           const picText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticketNum}\n*Kategori:* ${formData.category}\n*Cabang/Unit:* ${formData.branchName}\n*Pemohon:* ${formData.requesterName}\n*Perihal:* ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
-          
+
           // Template B: Untuk Pemohon (Email) - Formal/Eksternal Dept
           const emailSubject = `Konfirmasi Tiket Layanan Logistik: ${ticketNum} - ${titleReal}`;
           const emailBody = `Yth. Bapak/Ibu ${formData.requesterName},\n\nTerima kasih telah menghubungi Layanan Hotline Logistik BCA Syariah.\n\nBerikut adalah ringkasan tiket Anda yang telah kami terima dan masuk ke dalam antrean pengerjaan tim kami:\n\n- No. Tiket: ${ticketNum}\n- Kategori: ${formData.category}\n- Cabang/Unit: ${formData.branchName}\n- Perihal: ${titleReal}\n- Deskripsi: ${descReal}\n- PIC Bertugas: ${selectedPic.name}\n\nKami akan segera menindaklanjuti permintaan ini sesuai dengan Standard Service Level Agreement (SLA) yang berlaku. Apabila ada informasi tambahan, PIC kami akan menghubungi Anda kembali.\n\nSalam,\nDepartemen Logistik BCA Syariah`;
@@ -153,8 +153,8 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
             } else {
               alert("Info: Nomor HP PIC tidak terdaftar. Notif WA dilewati.");
             }
-          } 
-          
+          }
+
           // Eksekusi Teams PIC
           if (methods.includes('teams')) {
             if (selectedPic.email) {
@@ -201,9 +201,9 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Tanggal Permintaan</label>
-            <input 
-              required type="date" max={todayLocal} 
-              value={formData.requestDate} 
+            <input
+              required type="date" max={todayLocal}
+              value={formData.requestDate}
               onChange={(e) => setFormData({ ...formData, requestDate: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
             />
@@ -211,7 +211,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Landasan Permintaan (Media)</label>
-            <select value={formData.mediaRequest} onChange={(e) => setFormData({ ...formData, mediaRequest: e.target.value, issueImgUrl: e.target.value === 'Lisan / Verbal' ? '' : formData.issueImgUrl })}
+            <select value={formData.mediaRequest} onChange={(e) => setFormData({ ...formData, mediaRequest: e.target.value, issueImgUrl: (e.target.value === 'Lisan / Verbal' || e.target.value === 'Teams Form') ? '' : formData.issueImgUrl })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
             >
               <option value="Lisan / Verbal">Lisan / Verbal</option>
@@ -223,9 +223,9 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Cabang / Unit Pemohon</label>
-            <input 
-              required type="text" placeholder="Contoh: KCP DEPOK" 
-              value={formData.branchName} 
+            <input
+              required type="text" placeholder="Contoh: KCP DEPOK"
+              value={formData.branchName}
               onChange={(e) => setFormData({ ...formData, branchName: e.target.value.toUpperCase() })} // <-- ALL CAPS Logic
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700 uppercase"
             />
@@ -292,17 +292,16 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
           ></textarea>
         </div>
 
-        <div className={`space-y-2 transition-opacity duration-300 ${formData.mediaRequest === 'Lisan / Verbal' ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+        <div className={`space-y-2 transition-opacity duration-300 ${(formData.mediaRequest === 'Lisan / Verbal' || formData.mediaRequest === 'Teams Form') ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
-            <span>Upload File Pendukung {formData.mediaRequest !== 'Lisan / Verbal' && <span className="text-red-500">*WAJIB</span>}</span>
-            {formData.mediaRequest === 'Lisan / Verbal' && <span className="text-red-500">Dinonaktifkan untuk Lisan/Verbal</span>}
+            <span>Upload File Pendukung {(formData.mediaRequest !== 'Lisan / Verbal' && formData.mediaRequest !== 'Teams Form') && <span className="text-red-500">*WAJIB</span>}</span>
+            {(formData.mediaRequest === 'Lisan / Verbal' || formData.mediaRequest === 'Teams Form') && <span className="text-red-500">Dinonaktifkan untuk {formData.mediaRequest}</span>}
           </label>
           
           {!formData.issueImgUrl ? (
             <div className="relative">
-              <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading || formData.mediaRequest === 'Lisan / Verbal'} className="hidden" id="upload-issue" />
-              <label htmlFor="upload-issue" className={`flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${
-                  isUploading ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50'
+              <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading || formData.mediaRequest === 'Lisan / Verbal' || formData.mediaRequest === 'Teams Form'} className="hidden" id="upload-issue" />
+              <label htmlFor="upload-issue" className={`flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${isUploading ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50'
                 }`}
               >
                 {isUploading ? (
@@ -318,20 +317,20 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
             </div>
           ) : (
             <div className="relative rounded-xl overflow-hidden border border-slate-200 shadow-sm group w-full md:w-1/2">
-               <img src={formData.issueImgUrl} alt="File Issue" className="w-full h-auto object-cover max-h-48" />
-               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                 <button type="button" onClick={() => setFormData({ ...formData, issueImgUrl: '' })} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold text-xs rounded-lg shadow-lg transition-colors">Hapus Gambar</button>
-               </div>
-               <div className="absolute top-3 left-3 px-2.5 py-1.5 bg-emerald-500/90 backdrop-blur-sm text-white text-[10px] font-bold rounded-md flex items-center gap-1.5 shadow-sm"><CheckCircle2 size={12}/> File Terlampir</div>
+              <img src={formData.issueImgUrl} alt="File Issue" className="w-full h-auto object-cover max-h-48" />
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                <button type="button" onClick={() => setFormData({ ...formData, issueImgUrl: '' })} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold text-xs rounded-lg shadow-lg transition-colors">Hapus Gambar</button>
+              </div>
+              <div className="absolute top-3 left-3 px-2.5 py-1.5 bg-emerald-500/90 backdrop-blur-sm text-white text-[10px] font-bold rounded-md flex items-center gap-1.5 shadow-sm"><CheckCircle2 size={12} /> File Terlampir</div>
             </div>
           )}
         </div>
 
         {/* UPDATE: UI CHECKLIST MULTI-SELECT NOTIFIKASI */}
         <div className="space-y-3 pt-6 border-t border-slate-100">
-        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Kirim Notifikasi Tugas Via (Bisa Pilih &gt; 1)</label>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Kirim Notifikasi Tugas Via (Bisa Pilih &gt; 1)</label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
+
             <div onClick={() => toggleNotification('teams')} className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${formData.notificationMethods.includes('teams') ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-300 bg-slate-50'}`}>
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${formData.notificationMethods.includes('teams') ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300 bg-white'}`}>
                 {formData.notificationMethods.includes('teams') && <Check size={14} className="text-white" strokeWidth={3} />}
