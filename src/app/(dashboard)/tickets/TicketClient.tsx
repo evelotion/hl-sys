@@ -83,10 +83,11 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
-          <h2 className="text-xl font-bold text-slate-800 tracking-wide">Manajemen Tiket</h2>
+          {/* IMPROVE POIN 4: Standarisasi Nama Halaman */}
+          <h2 className="text-xl font-black text-slate-800 tracking-wide">Manajemen Tiket</h2>
           <p className="text-slate-500 mt-1 font-medium text-xs">Pantau dan kelola semua request logistik dari satu pintu.</p>
         </motion.div>
         
@@ -104,7 +105,7 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
       {/* Filter Bar */}
       <motion.div 
         initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
-        className="bg-white/80 backdrop-blur-2xl p-2.5 rounded-2xl border border-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] flex flex-col xl:flex-row gap-3 items-center justify-between"
+        className="bg-white p-2.5 rounded-[24px] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-3 items-center justify-between"
       >
         <div className="flex bg-slate-50/80 p-1 rounded-xl w-full xl:w-auto overflow-x-auto no-scrollbar border border-slate-100/50">
           <FilterButton label="Semua" value="ALL" currentFilter={statusFilter} onSelect={setStatusFilter} />
@@ -179,7 +180,7 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
         </div>
 
         {/* DESKTOP VIEW */}
-        <div className="hidden md:block bg-white/80 backdrop-blur-2xl rounded-3xl border border-white shadow-[0_10px_40px_rgb(0,0,0,0.04)] overflow-hidden">
+        <div className="hidden md:block bg-white rounded-[24px] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden mt-2">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
