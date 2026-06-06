@@ -279,6 +279,16 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Cabang / Unit</p>
               <p className="font-bold text-slate-800">{ticket?.branchName}</p>
             </div>
+            
+            {/* TAMBAHAN: INFO PEMOHON / PELAPOR */}
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Pemohon / Pelapor</p>
+              <p className="font-bold text-slate-800">{ticket?.requesterName || '-'}</p>
+              {ticket?.requesterEmail && (
+                <p className="text-[10px] text-slate-500 font-medium">{ticket.requesterEmail}</p>
+              )}
+            </div>
+
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Media Laporan</p>
               <p className="font-bold text-slate-800">{ticket?.mediaRequest || '-'}</p>
