@@ -45,7 +45,7 @@ async function main() {
     { initial: 'ETK', name: 'Etik Fikria Zulfa', phone: '6281326393756', email: 'etik_fikria@bcasyariah.co.id', role: 'PIC_LOGISTIK' },
     { initial: 'RLY', name: 'Rully Bella Puspaningtyas', phone: '6281356505714', email: 'ruly_bella@bcasyariah.co.id', role: 'PIC_LOGISTIK' },
     { initial: 'IBL', name: 'Ikbal Kurnia', phone: '6281586048214', email: 'ikbal_kurnia@bcasyariah.co.id', role: 'PIC_LOGISTIK' },
-    { initial: 'SML', name: 'Semuel Robert Lontoh', phone: '6285750337669', email: 'semuel_robert@bcasyariah.co.id', role: 'PIC_LOGISTIK' },
+    { initial: 'SEM', name: 'Semuel Robert Lontoh', phone: '6285750337669', email: 'semuel_robert@bcasyariah.co.id', role: 'PIC_LOGISTIK' },
     { initial: 'ADM', name: 'ADMIN', phone: '6285179677792', email: 'admin_logistik@bcasyariah.co.id', role: 'OPERATOR' },
   ];
 
