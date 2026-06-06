@@ -66,7 +66,7 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
             </div>
             <div>
               <h1 className="text-lg font-black text-slate-800 tracking-tight leading-none">HL-SYS</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Logistik</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Departemen Logistik</p>
             </div>
           </div>
         </div>
