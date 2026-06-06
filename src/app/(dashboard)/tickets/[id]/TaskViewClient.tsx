@@ -109,7 +109,10 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
            const isSendNotif = window.confirm(`Tiket di-reassign ke ${newPic.name}. Ingin kirim notifikasi penugasan ke MS Teams yang bersangkutan?`);
            if (isSendNotif && newPic.email) {
               const loginLink = `${window.location.origin}/login?nip=${newPic.initial}&pwd=password123`;
-              const notifText = `*🚨 RE-ASSIGNMENT TUGAS HL-SYS 🚨*\n\nHalo ${newPic.name}, ada tugas logistik yang baru saja dialihkan/di-reassign ke kamu nih:\n\n*No. Tiket:* ${ticket.ticketNumber}\n*Kategori:* ${data.ticket.category}\n*Perihal:* ${data.ticket.title}\n\nSegera cek detail pekerjaan di sistem:\n${loginLink}`;
+              
+              // HILANGKAN BINTANG DI SINI UNTUK TEAMS
+              const notifText = `🚨 RE-ASSIGNMENT TUGAS HL-SYS 🚨\n\nHalo ${newPic.name}, ada tugas logistik yang baru saja dialihkan/di-reassign ke kamu nih:\n\nNo. Tiket: ${ticket.ticketNumber}\nKategori: ${data.ticket.category}\nPerihal: ${data.ticket.title}\n\nSegera cek detail pekerjaan di sistem:\n${loginLink}`;
+              
               const teamsUrl = `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(newPic.email)}&message=${encodeURIComponent(notifText)}`;
               window.open(teamsUrl, '_blank');
            } else if (isSendNotif && !newPic.email) {

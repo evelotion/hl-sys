@@ -142,8 +142,11 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
           // 3. SEPARASI TEMPLATE (PIC vs PEMOHON)
 
-          // Template A: Untuk PIC (WA & Teams) - Casual/Internal
-          const picText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticketNum}\n*Kategori:* ${formData.category}\n*Cabang/Unit:* ${formData.branchName}\n*Pemohon:* ${formData.requesterName}\n*Perihal:* ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
+          // Template A1: Untuk WhatsApp (Pakai Markdown Bintang)
+          const waText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticketNum}\n*Kategori:* ${formData.category}\n*Cabang/Unit:* ${formData.branchName}\n*Pemohon:* ${formData.requesterName}\n*Perihal:* ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
+
+          // Template A2: Untuk MS Teams (Plain Text, Tanpa Formatting)
+          const teamsText = `🚨 TUGAS BARU HL-SYS 🚨\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\nNo. Tiket: ${ticketNum}\nKategori: ${formData.category}\nCabang/Unit: ${formData.branchName}\nPemohon: ${formData.requesterName}\nPerihal: ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
 
           // Template B: Untuk Pemohon (Email) - Formal/Eksternal Dept
           const emailSubject = `Konfirmasi Tiket Layanan Logistik: ${ticketNum} - ${titleReal}`;
@@ -157,7 +160,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
             if (selectedPic.phone) {
               let waNumber = selectedPic.phone.replace(/[^0-9]/g, '');
               if (waNumber.startsWith('0')) waNumber = '62' + waNumber.substring(1);
-              window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(picText)}`, '_blank');
+              window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`, '_blank');
             } else {
               alert("Info: Nomor HP PIC tidak terdaftar. Notif WA dilewati.");
             }
@@ -166,7 +169,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
           // Eksekusi Teams PIC
           if (methods.includes('teams')) {
             if (selectedPic.email) {
-              window.open(`https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(selectedPic.email)}&message=${encodeURIComponent(picText)}`, '_blank');
+              window.open(`https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(selectedPic.email)}&message=${encodeURIComponent(teamsText)}`, '_blank');
             } else {
               alert("Info: Email PIC tidak terdaftar. Notif MS Teams dilewati.");
             }
@@ -174,7 +177,6 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
           // Eksekusi Email Pemohon
           if (methods.includes('email') && formData.requesterEmail) {
-            // Pakai _self supaya buka default mail client (Outlook/Gmail) di laptop admin
             window.open(`mailto:${formData.requesterEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_self');
           }
         }

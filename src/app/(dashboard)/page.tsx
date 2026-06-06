@@ -111,17 +111,22 @@ export default async function DashboardPage() {
     };
   };
 
-  const urgentDataRes = await db.ticket.findFirst({
+ const activeSlaTickets = await db.ticket.findMany({
     where: { ...whereBase, status: { not: 'DONE' }, slaDeadline: { not: null } },
     orderBy: { slaDeadline: 'asc' },
     include: { pic: true }
   });
-  const urgentTicket = urgentDataRes ? formatTicketData(urgentDataRes) : null;
+
+  const formattedActiveSla = activeSlaTickets.map(formatTicketData);
+  const urgentTicket = formattedActiveSla.length > 0 ? formattedActiveSla[0] : null;
+
+  // Hitung total tiket yang SLA-nya sudah masuk zona merah (80% ke atas)
+  const totalCritical = formattedActiveSla.filter(t => t.sla >= 80).length;
 
   const recentData = await db.ticket.findMany({
-    where: whereBase,
+    where: { ...whereBase, status: { not: 'DONE' } },
     orderBy: { createdAt: 'desc' },
-    take: 5,
+    take: 15,
     include: { pic: true }
   });
   const recentTickets = recentData.map(formatTicketData);
@@ -138,6 +143,7 @@ export default async function DashboardPage() {
       userName={user.name}
       recentTickets={recentTickets}
       urgentTicket={urgentTicket} 
+      totalCritical={totalCritical}
     />
   );
 }
