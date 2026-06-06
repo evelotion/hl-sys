@@ -283,9 +283,19 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
             {/* TAMBAHAN: INFO PEMOHON / PELAPOR */}
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Pemohon / Pelapor</p>
-              <p className="font-bold text-slate-800">{ticket?.requesterName || '-'}</p>
-              {ticket?.requesterEmail && (
-                <p className="text-[10px] text-slate-500 font-medium">{ticket.requesterEmail}</p>
+              
+              {ticket?.requesterEmail ? (
+                <a 
+                  href={`https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(ticket.requesterEmail)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col hover:opacity-80 transition-opacity"
+                >
+                  <p className="font-bold text-indigo-600 underline decoration-indigo-200 underline-offset-4">{ticket?.requesterName}</p>
+                  <p className="text-[10px] text-indigo-400 font-medium group-hover:text-indigo-500">{ticket.requesterEmail}</p>
+                </a>
+              ) : (
+                <p className="font-bold text-slate-800">{ticket?.requesterName || '-'}</p>
               )}
             </div>
 
