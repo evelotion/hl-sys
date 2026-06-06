@@ -224,7 +224,8 @@ export default function DashboardClient({
           {recentTickets.map((ticket, idx) => (
             <div
               key={idx}
-              className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4"
+              onClick={() => setSelectedUrgentTicket(ticket)}
+              className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4 cursor-pointer active:scale-95 transition-all hover:border-indigo-200"
             >
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-700">
@@ -281,11 +282,12 @@ export default function DashboardClient({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+             <tbody className="divide-y divide-slate-100">
                 {recentTickets.map((ticket, idx) => (
                   <tr
                     key={idx}
-                    className="hover:bg-slate-50/50 transition-colors"
+                    onClick={() => setSelectedUrgentTicket(ticket)}
+                    className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
                   >
                     <td className="px-6 py-4 text-xs font-bold text-slate-700">
                       {ticket.id}
@@ -463,8 +465,7 @@ export default function DashboardClient({
 
             {latestTicket ? (
               <div className="flex-1 flex flex-col justify-center pl-2">
-                <div className="bg-gradient-to-br from-indigo-50/50 to-white border border-indigo-100 p-4 rounded-xl flex flex-col gap-3">
-                  <div>
+                <div onClick={() => setSelectedUrgentTicket(latestTicket)} className="cursor-pointer hover:shadow-md transition-all bg-gradient-to-br from-indigo-50/50 to-white border border-indigo-100 p-4 rounded-xl flex flex-col gap-3">      <div>
                     <div className="flex justify-between items-start gap-3 mb-2">
                       <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[9px] font-black rounded-md">
                         {latestTicket.id}
