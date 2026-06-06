@@ -50,22 +50,35 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     if (!file) return;
     setIsUploading(true);
     try {
+      // 1. Kompres gambar dulu biar ringan
       const options = { maxSizeMB: 1, maxWidthOrHeight: 1024, useWebWorker: true };
       const compressedFile = await imageCompression(file, options);
+      
       const uploadData = new FormData();
       uploadData.append('file', compressedFile);
-      uploadData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'hl_sys_preset');
 
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: uploadData });
+      // 2. Tembak ke API lokal kita sendiri (Bebas CORS & Firewall!)
+      const res = await fetch('/api/upload', { 
+        method: 'POST', 
+        body: uploadData 
+      });
+      
       const data = await res.json();
-      if (data.secure_url) setEditForm({ ...editForm, issueImgUrl: data.secure_url });
+      
+      if (data.success && data.url) {
+        // 3. Masukkan URL gambar dari server ke state editForm
+        setEditForm({ ...editForm, issueImgUrl: data.url });
+        toast.success("Gambar berhasil diunggah!");
+      } else {
+        toast.error("Gagal mengunggah file. Ditolak server.");
+      }
     } catch (error) {
-      toast.error("Gagal mengunggah file baru.");
+      console.error("Upload error:", error);
+      toast.error("Terjadi kesalahan jaringan saat mengunggah file.");
     } finally {
       setIsUploading(false);
     }
   };
-
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!comment.trim()) return;
