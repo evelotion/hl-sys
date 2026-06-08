@@ -35,7 +35,6 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
     }
   };
 
-  // Handle Submit Form (Create / Edit)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -44,7 +43,6 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
       const url = isEdit ? `/api/users/${formData.id}` : `/api/users`;
       const method = isEdit ? 'PATCH' : 'POST';
       
-      // Pisahkan 'id' dari properti lainnya secara aman
       const { id, ...payloadWithoutId } = formData;
       const finalPayload = isEdit ? formData : payloadWithoutId;
 
@@ -54,11 +52,22 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
         body: JSON.stringify(finalPayload)
       });
       
-      if (res.ok) {
+      // KITA TANGKAP BALIKAN DATA DARI API
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
         toast.success(isEdit ? 'Data User Diperbarui!' : 'User Baru Ditambahkan!');
         setIsModalOpen(false);
+        
+        // --- OPTIMISTIC UPDATE: Langsung update tabel lokal tanpa refresh ---
+        if (isEdit) {
+          setUsers(users.map(u => u.id === formData.id ? data.user : u));
+        } else {
+          setUsers([...users, data.user]);
+        }
+        
+        // Cukup suruh Next.js sync background, tanpa reload browser
         router.refresh();
-        setTimeout(() => window.location.reload(), 1000); 
       } else {
         toast.error('Inisial mungkin sudah dipakai atau terjadi kesalahan.');
       }
@@ -68,7 +77,6 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
       setIsSaving(false);
     }
   };
-
   // Handle Delete
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Yakin ingin menghapus user ${name}?`)) return;

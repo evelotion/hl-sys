@@ -83,19 +83,41 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     e.preventDefault();
     if (!comment.trim()) return;
     setIsCommenting(true);
+    
+    // Simpan teks komentar ke variabel sementara biar aman
+    const currentComment = comment; 
+    setComment(''); // Langsung kosongkan input box (Instan Feedback)
+    
     try {
       const res = await fetch(`/api/tickets/${ticket.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'ADD_COMMENT', message: comment, userId: currentUser?.id })
+        body: JSON.stringify({ action: 'ADD_COMMENT', message: currentComment, userId: currentUser?.id })
       });
+      
       if (res.ok) {
-        setComment('');
         toast.success('Catatan berhasil dikirim!', { style: { borderRadius: '12px', background: '#333', color: '#fff' } });
+        
+        // --- OPTIMISTIC UPDATE: Masukkan komentar pura-pura ke UI secara instan ---
+        const newLog = {
+          id: Date.now().toString(), // ID sementara
+          action: 'COMMENT',
+          message: currentComment,
+          createdAt: new Date().toISOString(),
+          user: {
+            name: currentUser?.name || 'Saya',
+            initial: currentUser?.name?.charAt(0) || '?',
+            role: currentUser?.role || 'UNKNOWN'
+          }
+        };
+        setTicket({ ...ticket, logs: [...(ticket.logs || []), newLog] });
+        
+        // Sync background
         router.refresh();
       }
     } catch (error) {
       toast.error('Gagal mengirim catatan!');
+      setComment(currentComment); // Kembalikan teks jika gagal
     } finally {
       setIsCommenting(false);
     }
