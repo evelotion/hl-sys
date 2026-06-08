@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Clock, AlertCircle, CheckCircle, ArrowDownUp, Tags, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, Clock, AlertCircle, CheckCircle, ArrowDownUp, Tags, Filter, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const FilterButton = ({ label, value, currentFilter, onSelect }: { label: string, value: string, currentFilter: string, onSelect: (v: string) => void }) => {
@@ -27,13 +27,23 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [sortOrder, setSortOrder] = useState('NEWEST');
+  // --- STATE SORTING BARU ---
+  const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
   
   // --- STATE PAGINATION BARU ---
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10; // Jumlah tiket per halaman, bisa lo ganti jadi 15 atau 20
+  const itemsPerPage = 10; 
 
   const router = useRouter();
+
+  // --- FUNGSI KLIK HEADER UNTUK SORTING ---
+  const handleSort = (key: string) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction: direction as 'asc' | 'desc' });
+  };
 
   const processedTickets = useMemo(() => {
     let result = initialTickets;
@@ -54,17 +64,29 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
       result = result.filter(t => t.category === categoryFilter);
     }
 
-    // Sort by Date
-    result = [...result].sort((a, b) => sortOrder === 'NEWEST' ? b.timestamp - a.timestamp : a.timestamp - b.timestamp);
+    // Sort by Kolom Dinamis
+    result = [...result].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+      
+      if (aValue === undefined || aValue === null) aValue = '';
+      if (bValue === undefined || bValue === null) bValue = '';
+
+      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
     
     return result;
-  }, [initialTickets, search, statusFilter, categoryFilter, sortOrder]);
+  }, [initialTickets, search, statusFilter, categoryFilter, sortConfig]);
 
-  // --- LOGIKA RESET HALAMAN & PEMOTONGAN DATA ---
-  // Reset ke halaman 1 kalau user ganti filter atau ngetik pencarian
+  // Reset ke halaman 1 kalau user ganti filter, sort, atau ngetik pencarian
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, categoryFilter, sortOrder]);
+  }, [search, statusFilter, categoryFilter, sortConfig]);
 
   // Hitung total halaman & potong data sesuai halaman saat ini
   const totalPages = Math.ceil(processedTickets.length / itemsPerPage);
@@ -86,7 +108,6 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
     <div className="space-y-6 pb-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
-          {/* IMPROVE POIN 4: Standarisasi Nama Halaman */}
           <h2 className="text-xl font-black text-slate-800 tracking-wide">Manajemen Tiket</h2>
           <p className="text-slate-500 mt-1 font-medium text-xs">Pantau dan kelola semua request logistik dari satu pintu.</p>
         </motion.div>
@@ -139,10 +160,10 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
           </div>
           
           <button 
-            onClick={() => setSortOrder(prev => prev === 'NEWEST' ? 'OLDEST' : 'NEWEST')}
-            className="p-2 bg-slate-50/50 border border-slate-200/50 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-white hover:shadow-sm transition-all flex items-center gap-2 text-xs font-semibold shrink-0"
+            onClick={() => handleSort('timestamp')}
+            className={`p-2 border rounded-xl transition-all flex items-center gap-2 text-xs font-semibold shrink-0 ${sortConfig.key === 'timestamp' ? 'bg-indigo-50 border-indigo-200 text-indigo-600 shadow-sm' : 'bg-slate-50/50 border-slate-200/50 text-slate-500 hover:bg-white hover:text-indigo-600 hover:shadow-sm'}`}
           >
-            <ArrowDownUp size={14} /> <span className="hidden sm:inline">{sortOrder === 'NEWEST' ? 'Terbaru' : 'Terlama'}</span>
+            <ArrowDownUp size={14} /> <span className="hidden sm:inline">{sortConfig.key === 'timestamp' && sortConfig.direction === 'asc' ? 'Terlama' : 'Terbaru'}</span>
           </button>
         </div>
       </motion.div>
@@ -152,7 +173,6 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
         {/* MOBILE VIEW */}
         <div className="md:hidden flex flex-col gap-3">
           <AnimatePresence>
-            {/* GANTI MAP DARI processedTickets KE paginatedTickets */}
             {paginatedTickets.map((ticket) => (
               <motion.div 
                 key={ticket.originalId}
@@ -183,19 +203,40 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
         <div className="hidden md:block bg-white rounded-[24px] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden mt-2">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[800px]">
+              
+              {/* HEADER TABEL SORTABLE */}
               <thead>
                 <tr className="bg-slate-50/40 border-b border-slate-200/40">
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID Tiket</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kategori</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Detail Masalah</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cabang</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">PIC</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                  {[
+                    { label: 'ID Tiket', key: 'ticketNumber' },
+                    { label: 'Kategori', key: 'category' },
+                    { label: 'Detail Masalah', key: 'title' },
+                    { label: 'Cabang', key: 'cabang' },
+                    { label: 'PIC', key: 'pic' },
+                    { label: 'Status', key: 'status' }
+                  ].map((col) => {
+                    const isActive = sortConfig.key === col.key;
+                    return (
+                      <th 
+                        key={col.key}
+                        onClick={() => handleSort(col.key)}
+                        className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest cursor-pointer hover:bg-slate-100/60 hover:text-slate-600 transition-colors group select-none"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {col.label}
+                          <div className="flex flex-col text-slate-300">
+                            <ChevronUp size={10} className={isActive && sortConfig.direction === 'asc' ? 'text-indigo-600 font-black' : 'opacity-40 group-hover:opacity-100'} />
+                            <ChevronDown size={10} className={`-mt-1 ${isActive && sortConfig.direction === 'desc' ? 'text-indigo-600 font-black' : 'opacity-40 group-hover:opacity-100'}`} />
+                          </div>
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
+
               <tbody>
                 <AnimatePresence>
-                  {/* GANTI MAP DARI processedTickets KE paginatedTickets */}
                   {paginatedTickets.map((ticket) => (
                     <motion.tr 
                       layout initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.2 }}
@@ -222,7 +263,7 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
             {paginatedTickets.length === 0 && <div className="text-center p-10 text-slate-400 font-medium text-sm">Tidak ada tiket ditemukan pada filter ini</div>}
           </div>
 
-          {/* --- FOOTER PAGINATION --- */}
+          {/* FOOTER PAGINATION */}
           {totalPages > 1 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100/60 bg-slate-50/30">
               <span className="text-[10px] md:text-xs text-slate-500 font-semibold">
@@ -252,8 +293,6 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
               </div>
             </div>
           )}
-          {/* ------------------------- */}
-
         </div>
       </motion.div>
     </div>
