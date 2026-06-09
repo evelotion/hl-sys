@@ -104,6 +104,13 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
     }
   };
 
+  // --- FUNGSI BARU UNTUK BADGE PRIORITAS ---
+  const getPriorityBadge = (priority: string) => {
+    if (priority === 'URGENT') return <span className="inline-flex items-center px-2 py-0.5 bg-red-50 text-red-600 rounded text-[9px] font-black border border-red-100 shadow-sm tracking-wider">🚨 URGENT</span>;
+    if (priority === 'LOW') return <span className="inline-flex items-center px-2 py-0.5 bg-slate-50 text-slate-500 rounded text-[9px] font-black border border-slate-200 shadow-sm tracking-wider">🟢 LOW</span>;
+    return <span className="inline-flex items-center px-2 py-0.5 bg-amber-50 text-amber-600 rounded text-[9px] font-black border border-amber-100 shadow-sm tracking-wider">⚡ MEDIUM</span>;
+  };
+
   return (
     <div className="space-y-6 pb-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
@@ -182,7 +189,11 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
               >
                 <div className="flex justify-between items-start gap-2">
                   <div>
-                    <p className="text-[10px] font-black text-indigo-600 mb-1">{ticket.ticketNumber}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-[10px] font-black text-indigo-600">{ticket.ticketNumber}</p>
+                      {/* PENAMBAHAN BADGE PRIORITAS DI MOBILE */}
+                      {getPriorityBadge(ticket.priority)}
+                    </div>
                     <h3 className="text-sm font-bold text-slate-800 line-clamp-2 leading-tight">{ticket.title}</h3>
                   </div>
                   <div className="shrink-0">{getStatusBadge(ticket.status)}</div>
@@ -209,6 +220,7 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
                 <tr className="bg-slate-50/40 border-b border-slate-200/40">
                   {[
                     { label: 'ID Tiket', key: 'ticketNumber' },
+                    { label: 'Prioritas', key: 'priority' }, // <-- PENAMBAHAN KOLOM HEADER
                     { label: 'Kategori', key: 'category' },
                     { label: 'Detail Masalah', key: 'title' },
                     { label: 'Cabang', key: 'cabang' },
@@ -245,6 +257,12 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
                       className="border-b border-slate-100/50 hover:bg-slate-50/50 hover:shadow-[0_4px_15px_rgb(0,0,0,0.02)] transition-all duration-200 cursor-pointer group"
                     >
                       <td className="px-6 py-4 font-semibold text-indigo-600 text-xs whitespace-nowrap">{ticket.ticketNumber}</td>
+                      
+                      {/* PENAMBAHAN KOLOM BADGE PRIORITAS DI DESKTOP */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getPriorityBadge(ticket.priority)}
+                      </td>
+
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-slate-500 rounded-md text-[10px] font-semibold border border-slate-200/60 shadow-sm whitespace-nowrap"><Tags size={10} /> {ticket.category}</span>
                       </td>

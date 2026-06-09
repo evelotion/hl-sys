@@ -5,49 +5,67 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // Wajib KOSONG (tanpa url) karena koneksi udah di-handle sama prisma.config.ts dan db.ts lo
 }
 
 model User {
-  id        String   @id @default(uuid())
-  initial   String   @unique 
-  name      String
-  phone     String?  
-  email     String?  // <-- TAMBAHIN BARIS INI BRO BUAT MS TEAMS
-  role      Role     @default(PIC_LOGISTIK)
-  tasks     Ticket[] @relation("PICTasks")
+  id      String  @id @default(uuid())
+  initial String  @unique
+  name    String
+  phone   String?
+  email   String?
+  role    String  @default("PIC_LOGISTIK")
+
+  // --- TAMBAHIN BARIS INI BRO ---
+  team String @default("Lainnya")
+
   createdAt DateTime @default(now())
-  logs      ActivityLog[]
+updatedAt DateTime @default(now()) @updatedAt
+
+  // FIX 2: Tambahin nama relasi biar nyambung sama tabel Ticket
+  tasks Ticket[] @relation("PICTasks")
+
+  // FIX 3: Tambahin balikan relasi dari tabel ActivityLog
+  logs ActivityLog[]
 }
 
 model Ticket {
-  id            String    @id @default(uuid())
-  ticketNumber  String    @unique
-  title         String    
-  description   String
-  category      String    @default("Umum")
-  status        Status    @default(OPEN)
-  issueImgUrl   String?
-  proofImgUrl   String?
-  branchName    String
-  requesterName String?
+  id             String    @id @default(uuid())
+  ticketNumber   String    @unique
+  title          String
+  description    String
+  category       String    @default("Umum")
+  status         Status    @default(OPEN)
+  issueImgUrl    String?
+  proofImgUrl    String?
+  branchName     String
+  requesterName  String?
   requesterEmail String?
-  mediaRequest  String?   
-  requestDate   DateTime? 
-  slaDeadline   DateTime?
-  picId         String?
-  pic           User?     @relation("PICTasks", fields: [picId], references: [id])
-  createdAt     DateTime  @default(now())
-  resolvedAt    DateTime?
-  logs          ActivityLog[]
+  mediaRequest   String?
+  requestDate    DateTime?
+  slaDeadline    DateTime?
+
+  picId String?
+  // Relasi ini nyambung ke "tasks" di tabel User
+  pic   User?   @relation("PICTasks", fields: [picId], references: [id])
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  priority   String    @default("MEDIUM") // Tambahin ini bro
+
+  logs ActivityLog[]
 }
 
 model ActivityLog {
-  id        String   @id @default(uuid())
-  ticketId  String
-  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  action    String   // Contoh: "COMMENT", "SYSTEM"
+  id       String @id @default(uuid())
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId   String
+
+  // Relasi ini nyambung ke "logs" di tabel User
+  user User @relation(fields: [userId], references: [id])
+
+  action    String // Contoh: "COMMENT", "SYSTEM"
   message   String
   createdAt DateTime @default(now())
 }

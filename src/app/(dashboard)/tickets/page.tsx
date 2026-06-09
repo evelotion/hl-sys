@@ -37,9 +37,10 @@ export default async function TicketsPage() {
     pic: t.pic?.name || 'Belum di-assign',
     status: t.status,
     timestamp: new Date(t.createdAt).getTime(), 
-    date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+    
+    priority: t.priority // <-- TAMBAHIN BARIS INI BRO
   }));
 
-  // Kirim userRole ke TicketClient (biar lo bisa hide tombol Buat Tiket nanti)
   return <TicketClient initialTickets={formattedTickets} userRole={user.role} />;
 }
