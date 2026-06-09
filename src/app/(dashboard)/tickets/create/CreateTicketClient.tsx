@@ -38,7 +38,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
   });
 
   const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL'];
-  const pembayaranInitials = ['RIN', 'ETK', 'RKS', 'RLY'];
+  const pembayaranInitials = ['RIN', 'ETK', 'RKS'];
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
   const filteredPics = pics.filter(pic => {

@@ -131,7 +131,7 @@ export default async function DashboardPage() {
   // Hanya ambil yang IN_PROGRESS
   const recentData = await db.ticket.findMany({
     where: { ...whereBase, status: 'IN_PROGRESS' }, // <-- UBAH KE IN_PROGRESS
-    orderBy: { createdAt: 'desc' }, // <-- Urutkan dari yang terakhir diupdate
+  orderBy: { createdAt: 'desc' }, // <-- Urutkan dari yang terakhir diupdate
     take: 15,
     include: { pic: true }
   });
