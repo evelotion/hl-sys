@@ -300,6 +300,17 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">PIC Ditugaskan</p>
               <p className="font-bold text-slate-800">{ticket?.pic?.name || 'Belum di-assign'}</p>
             </div>
+            
+            {/* --- TAMBAHIN BLOK INI BRO --- */}
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Waktu Diterima (Masuk Sistem)</p>
+              <p className="font-bold text-indigo-600 flex items-center gap-1.5">
+                <Clock size={14} />
+                {ticket?.createdAt ? new Date(ticket.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB' : '-'}
+              </p>
+            </div>
+            {/* ----------------------------- */}
+
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Cabang / Unit</p>
               <p className="font-bold text-slate-800">{ticket?.branchName}</p>

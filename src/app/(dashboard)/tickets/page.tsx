@@ -37,9 +37,11 @@ export default async function TicketsPage() {
     pic: t.pic?.name || 'Belum di-assign',
     status: t.status,
     timestamp: new Date(t.createdAt).getTime(), 
-    date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
     
-    priority: t.priority // <-- TAMBAHIN BARIS INI BRO
+    // --- UBAH BARIS INI BRO (Tambahin hour & minute) ---
+    date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB',
+    
+    priority: t.priority
   }));
 
   return <TicketClient initialTickets={formattedTickets} userRole={user.role} />;

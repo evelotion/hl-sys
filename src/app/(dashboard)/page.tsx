@@ -107,7 +107,9 @@ export default async function DashboardPage() {
       title: t.title,
       category: t.category,
       cabang: t.branchName,
-      date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+      
+      // --- UBAH BARIS INI BRO ---
+      date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' WIB'
     };
   };
 
