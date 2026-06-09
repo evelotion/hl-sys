@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail } from "lucide-react"; // <-- Tambahan icon MessageCircle & Mail
+import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail } from "lucide-react"; 
 
 interface PICWorkloadData { name: string; initial: string; activeTasks: number; completed: number; }
 interface PICWorkloadGroup { P3: PICWorkloadData[]; Pengadaan: PICWorkloadData[]; Pembayaran: PICWorkloadData[]; Lainnya: PICWorkloadData[]; }
@@ -15,10 +15,10 @@ interface TicketData {
 }
 
 export default function DashboardClient({
-  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket, criticalTickets, // <-- Ubah totalCritical jadi criticalTickets
+  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket, criticalTickets, latestTickets // <-- Tambahan props latestTickets
 }: {
   totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; userRole: string; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
-  criticalTickets: TicketData[]; // <-- Type diubah
+  criticalTickets: TicketData[]; latestTickets: TicketData[]; // <-- Tambahan type latestTickets
 }) {
   const safeTotal = totalRequest === 0 ? 1 : totalRequest;
   const donePercentage = totalRequest === 0 ? 0 : Math.round((completed / safeTotal) * 100);
@@ -30,7 +30,7 @@ export default function DashboardClient({
   const doneStroke = (donePercentage / 100) * circumference;
 
   const [selectedUrgentTicket, setSelectedUrgentTicket] = useState<TicketData | null>(null);
-  const [showCriticalList, setShowCriticalList] = useState(false); // <-- STATE MODAL LIST KRITIS
+  const [showCriticalList, setShowCriticalList] = useState(false); 
 
   const [greeting, setGreeting] = useState("Selamat Datang");
   useEffect(() => {
@@ -101,7 +101,6 @@ export default function DashboardClient({
       </motion.div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        {/* ... (4 Kartu KPI Tetap Sama) ... */}
         <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div className="flex items-center gap-2 text-slate-500 mb-3"><FileText size={18} className="text-indigo-500" /><span className="text-[10px] font-bold uppercase tracking-wider">Total Request</span></div>
           <div><p className="text-3xl md:text-4xl font-black text-slate-800">{totalRequest}</p></div>
@@ -145,7 +144,6 @@ export default function DashboardClient({
         </div>
       </details>
 
-      {/* --- TABEL UTAMA BERUBAH JADI LIVE PROGRESS BOARD --- */}
       <div className="w-full">
         <h3 className="text-sm font-bold text-slate-800 mb-3 md:hidden">Live Progress Board</h3>
         
@@ -225,13 +223,13 @@ export default function DashboardClient({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* --- KOLOM KIRI (SLA Kritis + Tiket Terbaru) --- */}
         <div className="flex flex-col gap-4">
           <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-sm flex flex-col min-h-[220px] relative">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500 rounded-l-2xl"></div>
             <div className="flex items-center justify-between mb-3 pl-2">
               <div className="flex items-center gap-2">
                 <h3 className="text-[10px] font-bold text-red-600 uppercase tracking-widest flex items-center gap-1.5"><AlertCircle size={14} /> SLA Kritis</h3>
-                {/* KLIK BADGE BUKA MODAL LIST KRITIS */}
                 {criticalTickets.length > 0 && (
                   <button onClick={() => setShowCriticalList(true)} className="px-2 py-0.5 bg-red-100 text-red-700 hover:bg-red-200 text-[9px] font-black rounded-md border border-red-200 shadow-sm transition-colors cursor-pointer active:scale-95">
                     Lihat Semua ({criticalTickets.length})
@@ -276,9 +274,31 @@ export default function DashboardClient({
               </div>
             )}
           </div>
-        </div>
 
-        {/* ... (Completion Tracking Tetap Sama, bisa dilewati atau biarkan original) ... */}
+          {/* --- KARTU TIKET TERBARU --- */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[200px]">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">5 Tiket Masuk Terbaru</h3>
+            <div className="space-y-2 overflow-y-auto max-h-[200px] pr-1 custom-scrollbar">
+              {latestTickets.map((t, idx) => (
+                <div key={idx} onClick={() => setSelectedUrgentTicket(t)} className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl flex justify-between items-center text-xs hover:border-indigo-200 transition-colors cursor-pointer active:scale-[0.98]">
+                  <div className="overflow-hidden mr-2">
+                    <p className="font-bold text-slate-800 truncate">{t.title}</p>
+                    <p className="text-[9px] text-slate-400 font-medium">{t.id} • {t.cabang}</p>
+                  </div>
+                  <span className={`px-2 py-0.5 text-[8px] font-black rounded shrink-0 ${getStatusColor(t.status)}`}>
+                    {t.status}
+                  </span>
+                </div>
+              ))}
+              {latestTickets.length === 0 && <p className="text-[10px] text-slate-400 text-center py-4">Belum ada tiket masuk.</p>}
+            </div>
+          </div>
+          {/* --- END KARTU TIKET TERBARU --- */}
+
+        </div>
+        {/* --- END KOLOM KIRI --- */}
+
+        {/* --- KOLOM KANAN (Completion Tracking) --- */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[300px]">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Completion Tracking</h3>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-8 flex-1">
@@ -299,6 +319,7 @@ export default function DashboardClient({
             </div>
           </div>
         </div>
+        {/* --- END KOLOM KANAN --- */}
       </div>
 
       {userRole !== "PIC_LOGISTIK" && (

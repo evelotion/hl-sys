@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   const onProgress = await db.ticket.count({ where: { ...whereBase, status: 'IN_PROGRESS' } });
   const completed = await db.ticket.count({ where: { ...whereBase, status: 'DONE' } });
 
-  // 2. SLA Tracking (IMPROVE POIN 8: Berdasarkan Total Request)
+  // 2. SLA Tracking (Berdasarkan Total Request)
   const allTicketsForSLA = await db.ticket.findMany({
     where: whereBase,
     select: { createdAt: true, resolvedAt: true, slaDeadline: true, status: true }
@@ -35,12 +35,9 @@ export default async function DashboardPage() {
     
     allTicketsForSLA.forEach(t => {
       if (t.slaDeadline) {
-        // Jika sudah selesai, cek apakah selesainya telat
         if (t.status === 'DONE' && t.resolvedAt && t.resolvedAt > t.slaDeadline) {
           overdueCount++;
-        } 
-        // Jika belum selesai, cek apakah hari ini sudah melebihi deadline
-        else if (t.status !== 'DONE' && now > t.slaDeadline) {
+        } else if (t.status !== 'DONE' && now > t.slaDeadline) {
           overdueCount++;
         }
       }
@@ -52,7 +49,7 @@ export default async function DashboardPage() {
     slaOnTimePercentage = 0;
   }
 
-  // 3. Beban Kerja PIC (IMPROVE POIN 7: Susun Berdasarkan Kategori)
+  // 3. Beban Kerja PIC
   const pics = await db.user.findMany({
     where: { role: 'PIC_LOGISTIK' },
     include: { tasks: true }
@@ -104,18 +101,18 @@ export default async function DashboardPage() {
       progress: progress,
       sla: sla,
       pic: t.pic?.initial || 'N/A',
-      picName: t.pic?.name || 'PIC',         // <-- TAMBAHAN KONTAK PIC
-      picPhone: t.pic?.phone || '',          // <-- TAMBAHAN KONTAK PIC
-      picEmail: t.pic?.email || '',          // <-- TAMBAHAN KONTAK PIC
+      picName: t.pic?.name || 'PIC',
+      picPhone: t.pic?.phone || '',
+      picEmail: t.pic?.email || '',
       title: t.title,
       category: t.category,
-      priority: t.priority || 'MEDIUM',      // <-- TAMBAHAN PRIORITAS
+      priority: t.priority || 'MEDIUM',
       cabang: t.branchName,
       date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' WIB'
     };
   };
 
- const activeSlaTickets = await db.ticket.findMany({
+  const activeSlaTickets = await db.ticket.findMany({
     where: { ...whereBase, status: { not: 'DONE' }, slaDeadline: { not: null } },
     orderBy: { slaDeadline: 'asc' },
     include: { pic: true }
@@ -123,19 +120,25 @@ export default async function DashboardPage() {
 
   const formattedActiveSla = activeSlaTickets.map(formatTicketData);
   const urgentTicket = formattedActiveSla.length > 0 ? formattedActiveSla[0] : null;
-
-  // FIX: Ambil seluruh daftar tiket kritis, bukan cuma total angkanya
   const criticalTickets = formattedActiveSla.filter(t => t.sla >= 80);
 
-  // UBAH FUNGSI TABEL UTAMA JADI "LIVE PROGRESS BOARD"
-  // Hanya ambil yang IN_PROGRESS
+  // 4. LIVE PROGRESS BOARD (Hanya IN_PROGRESS)
   const recentData = await db.ticket.findMany({
-    where: { ...whereBase, status: 'IN_PROGRESS' }, // <-- UBAH KE IN_PROGRESS
-  orderBy: { createdAt: 'desc' }, // <-- Urutkan dari yang terakhir diupdate
+    where: { ...whereBase, status: 'IN_PROGRESS' }, 
+    orderBy: { createdAt: 'desc' },
     take: 15,
     include: { pic: true }
   });
   const recentTickets = recentData.map(formatTicketData);
+
+  // 5. TIKET MASUK TERBARU (Apapun statusnya, ambil 5 terakhir) --> INI YANG BARU
+  const latestTicketsData = await db.ticket.findMany({
+    where: whereBase,
+    orderBy: { createdAt: 'desc' },
+    take: 5,
+    include: { pic: true }
+  });
+  const latestTickets = latestTicketsData.map(formatTicketData);
 
   return (
     <DashboardClient 
@@ -149,7 +152,8 @@ export default async function DashboardPage() {
       userName={user.name}
       recentTickets={recentTickets}
       urgentTicket={urgentTicket} 
-      criticalTickets={criticalTickets} // <-- PASSING DAFTAR TIKET KRITIS
+      criticalTickets={criticalTickets} 
+      latestTickets={latestTickets} // <-- PASSING DATA BARU KE CLIENT
     />
   );
 }
