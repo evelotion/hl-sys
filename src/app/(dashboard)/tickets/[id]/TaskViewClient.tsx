@@ -34,11 +34,10 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     issueImgUrl: ticket?.issueImgUrl || ''
   });
 
-  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM']; // Tambah SEM
-  const pembayaranInitials = ['RIN', 'ETK', 'RKS']; // Hapus RLY
+  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM']; 
+  const pembayaranInitials = ['RIN', 'ETK', 'RKS']; 
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
-  // FIX TAHAP 3: Pastikan role ADMIN juga bisa lihat tombol edit
   const isKabid = ['FER', 'RML', 'RIN'].includes(currentUser?.initial);
   const canEdit = currentUser?.role === 'OPERATOR' || currentUser?.role === 'ADMIN' || isKabid;
 
@@ -402,6 +401,23 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                         <option value="URGENT">URGENT (1 Hari)</option>
                         <option value="MEDIUM">MEDIUM (3 Hari)</option>
                         <option value="LOW">LOW (7 Hari)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* TAMBAHAN BARU: Cabang/Unit dan Media Laporan */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-500">Cabang / Unit</label>
+                      <input type="text" required value={editForm.branchName} onChange={(e) => setEditForm({ ...editForm, branchName: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-500">Media Laporan</label>
+                      <select value={editForm.mediaRequest} onChange={(e) => setEditForm({ ...editForm, mediaRequest: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300">
+                        <option value="Lisan/Verbal">Lisan / Verbal</option>
+                        <option value="Telepon">Telepon / WhatsApp</option>
+                        <option value="Email">Email</option>
+                        <option value="Teams Form">MS Teams Form</option>
                       </select>
                     </div>
                   </div>
