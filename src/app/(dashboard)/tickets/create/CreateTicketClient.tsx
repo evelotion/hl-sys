@@ -28,7 +28,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
     branchName: '',
     requesterName: '',
     requesterEmail: '', 
-    priority: 'MEDIUM', // <--- STATE BARU: Default MEDIUM
+    priority: 'MEDIUM',
     category: '',
     picId: '',
     title: '',
@@ -42,7 +42,6 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
   const filteredPics = pics.filter(pic => {
-    // TAHAP 2: Ibu Andreanne selalu muncul di kategori manapun
     if (pic.initial === 'ABC') return true; 
 
     if (formData.category === 'P3') return p3Initials.includes(pic.initial);
@@ -138,15 +137,16 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
         if (selectedPic) {
           const ticketNum = data.ticket?.ticketNumber || 'Terbaru';
           const baseUrl = window.location.origin;
-          const loginLink = `${baseUrl}/login?nip=${selectedPic.initial}&pwd=password123`;
+          
+          const loginLink = `${baseUrl}/login?nip=${selectedPic.initial}`;
 
-          // UPDATE: TAMBAHAN INFO PRIORITAS DI NOTIFIKASI
           const waText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticketNum}\n*Prioritas SLA:* ${formData.priority}\n*Kategori:* ${formData.category}\n*Cabang/Unit:* ${formData.branchName}\n*Pemohon:* ${formData.requesterName}\n*Perihal:* ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
 
           const teamsText = `🚨 TUGAS BARU HL-SYS 🚨\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\nNo. Tiket: ${ticketNum}\nPrioritas SLA: ${formData.priority}\nKategori: ${formData.category}\nCabang/Unit: ${formData.branchName}\nPemohon: ${formData.requesterName}\nPerihal: ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
 
           const emailSubject = `[${formData.priority}] Konfirmasi Tiket Layanan Logistik: ${ticketNum} - ${titleReal}`;
-          const emailBody = `Yth. Bapak/Ibu ${formData.requesterName},\n\nTerima kasih telah menghubungi Layanan Hotline Logistik BCA Syariah.\n\nBerikut adalah ringkasan tiket Anda yang telah kami terima dan masuk ke dalam antrean pengerjaan tim kami:\n\n- No. Tiket: ${ticketNum}\n- Prioritas: ${formData.priority}\n- Kategori: ${formData.category}\n- Cabang/Unit: ${formData.branchName}\n- Perihal: ${titleReal}\n- Deskripsi: ${descReal}\n- PIC Bertugas: ${selectedPic.name}\n\nKami akan segera menindaklanjuti permintaan ini sesuai dengan Standard Service Level Agreement (SLA) yang berlaku. Apabila ada informasi tambahan, PIC kami akan menghubungi Anda kembali.\n\nSalam,\nDepartemen Logistik BCA Syariah`;
+          const emailBody = `Yth. Bapak/Ibu ${formData.requesterName},\n\nTerima kasih telah menghubungi Layanan Hotline Logistik BCA Syariah.\n\nBerikut adalah ringkasan tiket Anda yang telah kami terima dan masuk ke dalam antrean pengerjaan tim kami:\n\n- No. Tiket: ${ticketNum}\n- Prioritas: ${formData.priority}\n- Kategori: ${formData.category}\n- Cabang/Unit: ${formData.branchName}\n- Perihal: ${titleReal}\n- Deskripsi: ${descReal}\n- PIC Bertugas: ${selectedPic.name}\n\nKami akan segera menindaklanjuti permintaan ini sesuai dengan SLA yang berlaku. Apabila ada informasi tambahan, PIC kami akan menghubungi Anda kembali.\n\nSalam,\nDepartemen Logistik BCA Syariah`;
+          
           const methods = formData.notificationMethods;
           if (methods.includes('whatsapp')) {
             if (selectedPic.phone) {
@@ -241,7 +241,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
               <span>Email Pemohon</span>
-              <span className="text-slate-400 font-normal lowercase">(Untuk notif tiket)</span>
+              <span className="text-slate-400 font-normal lowercase">(Untuk notif)</span>
             </label>
             <input required type="email" placeholder="Contoh: budi_santoso@bcasyariah.co.id" value={formData.requesterEmail} onChange={(e) => setFormData({ ...formData, requesterEmail: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
@@ -260,7 +260,6 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
             </select>
           </div>
 
-          {/* INPUT BARU: TINGKAT PRIORITAS SLA */}
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Tingkat Prioritas (SLA)</label>
             <select required value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
@@ -291,7 +290,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
         <div className="space-y-2 border-t border-slate-100 pt-6">
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Perihal</label>
-          <input required minLength={5} type="text" placeholder="Contoh: Permintaan Cetak Form Mutasi (Min 5 Karakter)" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          <input required minLength={5} type="text" placeholder="Contoh: Permintaan Cetak Form (Min 5 Karakter)" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
           />
         </div>
@@ -306,15 +305,13 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
         <div className={`space-y-2 transition-opacity duration-300 ${(formData.mediaRequest === 'Lisan / Verbal' || formData.mediaRequest === 'Teams Form') ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
             <span>Upload File Pendukung {(formData.mediaRequest !== 'Lisan / Verbal' && formData.mediaRequest !== 'Teams Form') && <span className="text-red-500">*WAJIB</span>}</span>
-            {(formData.mediaRequest === 'Lisan / Verbal' || formData.mediaRequest === 'Teams Form') && <span className="text-red-500">Dinonaktifkan untuk {formData.mediaRequest}</span>}
+            {(formData.mediaRequest === 'Lisan / Verbal' || formData.mediaRequest === 'Teams Form') && <span className="text-red-500">Dinonaktifkan</span>}
           </label>
           
           {!formData.issueImgUrl ? (
             <div className="relative">
               <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading || formData.mediaRequest === 'Lisan / Verbal' || formData.mediaRequest === 'Teams Form'} className="hidden" id="upload-issue" />
-              <label htmlFor="upload-issue" className={`flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${isUploading ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50'
-                }`}
-              >
+              <label htmlFor="upload-issue" className={`flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${isUploading ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50'}`}>
                 {isUploading ? (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 text-indigo-600 font-bold text-sm">
                     <Loader2 size={18} className="animate-spin" /> Mengunggah File...
@@ -338,16 +335,14 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
         </div>
 
         <div className="space-y-3 pt-6 border-t border-slate-100">
-          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Kirim Notifikasi Tugas Via (Bisa Pilih &gt; 1)</label>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Kirim Notifikasi Tugas Via</label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
             <div onClick={() => toggleNotification('teams')} className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${formData.notificationMethods.includes('teams') ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-300 bg-slate-50'}`}>
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${formData.notificationMethods.includes('teams') ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300 bg-white'}`}>
                 {formData.notificationMethods.includes('teams') && <Check size={14} className="text-white" strokeWidth={3} />}
               </div>
               <div className="flex flex-col">
                 <span className={`text-sm font-bold ${formData.notificationMethods.includes('teams') ? 'text-indigo-700' : 'text-slate-600'}`}>MS Teams</span>
-                <span className="text-[10px] font-medium text-slate-400">Ke PIC Bertugas</span>
               </div>
             </div>
 
@@ -357,7 +352,6 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
               </div>
               <div className="flex flex-col">
                 <span className={`text-sm font-bold ${formData.notificationMethods.includes('whatsapp') ? 'text-emerald-700' : 'text-slate-600'}`}>WhatsApp</span>
-                <span className="text-[10px] font-medium text-slate-400">Ke PIC Bertugas</span>
               </div>
             </div>
 
@@ -366,11 +360,9 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
                 {formData.notificationMethods.includes('email') && <Check size={14} className="text-white" strokeWidth={3} />}
               </div>
               <div className="flex flex-col">
-                <span className={`text-sm font-bold ${formData.notificationMethods.includes('email') ? 'text-blue-700' : 'text-slate-600'}`}>Email Outlook</span>
-                <span className="text-[10px] font-medium text-slate-400">Ke Cabang / Pemohon</span>
+                <span className={`text-sm font-bold ${formData.notificationMethods.includes('email') ? 'text-blue-700' : 'text-slate-600'}`}>Email</span>
               </div>
             </div>
-
           </div>
         </div>
 
@@ -378,7 +370,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
           <motion.button whileHover={{ scale: 1.01, y: -2 }} whileTap={{ scale: 0.98 }} disabled={isLoading} type="submit"
             className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white font-bold rounded-xl shadow-[0_8px_20px_rgb(79,70,229,0.25)] hover:shadow-[0_12px_25px_rgb(79,70,229,0.35)] transition-all duration-300 disabled:opacity-70 text-sm"
           >
-            {isLoading ? <><Loader2 size={18} className="animate-spin" /> Menyimpan & Mengirim Notif...</> : <><Save size={18} /> Simpan Tiket & Beri Notifikasi</>}
+            {isLoading ? <><Loader2 size={18} className="animate-spin" /> Menyimpan...</> : <><Save size={18} /> Simpan & Notifikasi</>}
           </motion.button>
         </div>
       </motion.form>

@@ -38,13 +38,13 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
   const pembayaranInitials = ['RIN', 'ETK', 'RKS'];
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
-  // FIX LOGIC AKSES EDIT: Dept Head & Kabid punya akses bypass edit
   const isHead = ['ABC', 'FER', 'RML', 'RIN'].includes(currentUser?.initial);
   const safeRole = currentUser?.role?.toUpperCase() || '';
   const canEdit = safeRole === 'OPERATOR' || safeRole.includes('ADMIN') || isHead;
 
   const filteredPics = pics?.filter(pic => {
     if (pic.initial === 'ABC') return true;
+    
     if (editForm.category === 'P3') return p3Initials.includes(pic.initial);
     if (editForm.category === 'Pembayaran') return pembayaranInitials.includes(pic.initial);
     if (editForm.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial);
@@ -143,7 +143,9 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
            const newPic = data.ticket.pic;
            const isSendNotif = window.confirm(`Tiket di-reassign ke ${newPic.name}. Ingin kirim notifikasi penugasan ke MS Teams yang bersangkutan?`);
            if (isSendNotif && newPic.email) {
-              const loginLink = `${window.location.origin}/login?nip=${newPic.initial}&pwd=password123`;
+              // FIX: Hapus password dari URL agar aman
+              const loginLink = `${window.location.origin}/login?nip=${newPic.initial}`;
+              
               const notifText = `🚨 RE-ASSIGNMENT TUGAS HL-SYS 🚨\n\nHalo ${newPic.name}, ada tugas logistik yang baru saja dialihkan/di-reassign ke kamu nih:\n\nNo. Tiket: ${ticket.ticketNumber}\nKategori: ${data.ticket.category}\nPerihal: ${data.ticket.title}\n\nSegera cek detail pekerjaan di sistem:\n${loginLink}`;
               const teamsUrl = `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(newPic.email)}&message=${encodeURIComponent(notifText)}`;
               window.open(teamsUrl, '_blank');
@@ -216,7 +218,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
           <ArrowLeft size={16} /> Kembali ke Daftar
         </button>
         
-        {/* Tombol Edit ini sekarang bakal nongol buat OPERATOR, ADMIN, dan HEADS (ABC, FER, dll) */}
         {canEdit && (
           <button onClick={() => setIsEditOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:shadow-md hover:border-indigo-200 hover:text-indigo-600 transition-all text-sm">
             <Edit size={16} /> Edit Tiket
