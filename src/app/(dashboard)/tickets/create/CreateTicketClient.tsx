@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Loader2, UploadCloud, CheckCircle2, Check } from 'lucide-react'; // <-- Tambahan icon Check
+import { ArrowLeft, Save, Loader2, UploadCloud, CheckCircle2, Check } from 'lucide-react'; 
 import imageCompression from 'browser-image-compression';
 
 interface PIC {
@@ -22,19 +22,19 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
   const todayLocal = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
-  // 1. UPDATE STATE: Tambah email pemohon & ubah notifikasi jadi array
   const [formData, setFormData] = useState({
     requestDate: todayLocal,
     mediaRequest: 'Lisan / Verbal',
     branchName: '',
     requesterName: '',
-    requesterEmail: '', // <--- STATE BARU
+    requesterEmail: '', 
+    priority: 'MEDIUM', // <--- STATE BARU: Default MEDIUM
     category: '',
     picId: '',
     title: '',
     description: '',
     issueImgUrl: '',
-    notificationMethods: ['teams', 'email'] // <--- Default checklist (Array)
+    notificationMethods: ['teams', 'email'] 
   });
 
   const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL'];
@@ -48,13 +48,12 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
     return false;
   });
 
-  // Fungsi toggle checklist notifikasi
   const toggleNotification = (method: string) => {
     setFormData(prev => ({
       ...prev,
       notificationMethods: prev.notificationMethods.includes(method)
-        ? prev.notificationMethods.filter(m => m !== method) // Kalo udah ada, hapus (uncheck)
-        : [...prev.notificationMethods, method] // Kalo belum ada, tambah (check)
+        ? prev.notificationMethods.filter(m => m !== method) 
+        : [...prev.notificationMethods, method] 
     }));
   };
 
@@ -70,7 +69,6 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
       const uploadData = new FormData();
       uploadData.append('file', compressedFile);
 
-      // Nembak ke API lokal kita sendiri (Bebas CORS & Firewall!)
       const res = await fetch('/api/upload', { 
         method: 'POST', 
         body: uploadData 
@@ -117,7 +115,6 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
     setIsLoading(true);
 
     try {
-      // 2. INCLUDE REQUESTER EMAIL KE PAYLOAD
       const finalPayload = {
         ...formData,
         title: titleReal,
@@ -140,22 +137,14 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
           const baseUrl = window.location.origin;
           const loginLink = `${baseUrl}/login?nip=${selectedPic.initial}&pwd=password123`;
 
-          // 3. SEPARASI TEMPLATE (PIC vs PEMOHON)
+          // UPDATE: TAMBAHAN INFO PRIORITAS DI NOTIFIKASI
+          const waText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticketNum}\n*Prioritas SLA:* ${formData.priority}\n*Kategori:* ${formData.category}\n*Cabang/Unit:* ${formData.branchName}\n*Pemohon:* ${formData.requesterName}\n*Perihal:* ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
 
-          // Template A1: Untuk WhatsApp (Pakai Markdown Bintang)
-          const waText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticketNum}\n*Kategori:* ${formData.category}\n*Cabang/Unit:* ${formData.branchName}\n*Pemohon:* ${formData.requesterName}\n*Perihal:* ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
+          const teamsText = `🚨 TUGAS BARU HL-SYS 🚨\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\nNo. Tiket: ${ticketNum}\nPrioritas SLA: ${formData.priority}\nKategori: ${formData.category}\nCabang/Unit: ${formData.branchName}\nPemohon: ${formData.requesterName}\nPerihal: ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
 
-          // Template A2: Untuk MS Teams (Plain Text, Tanpa Formatting)
-          const teamsText = `🚨 TUGAS BARU HL-SYS 🚨\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\nNo. Tiket: ${ticketNum}\nKategori: ${formData.category}\nCabang/Unit: ${formData.branchName}\nPemohon: ${formData.requesterName}\nPerihal: ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
-
-          // Template B: Untuk Pemohon (Email) - Formal/Eksternal Dept
-          const emailSubject = `Konfirmasi Tiket Layanan Logistik: ${ticketNum} - ${titleReal}`;
-          const emailBody = `Yth. Bapak/Ibu ${formData.requesterName},\n\nTerima kasih telah menghubungi Layanan Hotline Logistik BCA Syariah.\n\nBerikut adalah ringkasan tiket Anda yang telah kami terima dan masuk ke dalam antrean pengerjaan tim kami:\n\n- No. Tiket: ${ticketNum}\n- Kategori: ${formData.category}\n- Cabang/Unit: ${formData.branchName}\n- Perihal: ${titleReal}\n- Deskripsi: ${descReal}\n- PIC Bertugas: ${selectedPic.name}\n\nKami akan segera menindaklanjuti permintaan ini sesuai dengan Standard Service Level Agreement (SLA) yang berlaku. Apabila ada informasi tambahan, PIC kami akan menghubungi Anda kembali.\n\nSalam,\nDepartemen Logistik BCA Syariah`;
-
-          // 4. EKSEKUSI MULTI-NOTIFIKASI BERDASARKAN CHECKLIST
+          const emailSubject = `[${formData.priority}] Konfirmasi Tiket Layanan Logistik: ${ticketNum} - ${titleReal}`;
+          const emailBody = `Yth. Bapak/Ibu ${formData.requesterName},\n\nTerima kasih telah menghubungi Layanan Hotline Logistik BCA Syariah.\n\nBerikut adalah ringkasan tiket Anda yang telah kami terima dan masuk ke dalam antrean pengerjaan tim kami:\n\n- No. Tiket: ${ticketNum}\n- Prioritas: ${formData.priority}\n- Kategori: ${formData.category}\n- Cabang/Unit: ${formData.branchName}\n- Perihal: ${titleReal}\n- Deskripsi: ${descReal}\n- PIC Bertugas: ${selectedPic.name}\n\nKami akan segera menindaklanjuti permintaan ini sesuai dengan Standard Service Level Agreement (SLA) yang berlaku. Apabila ada informasi tambahan, PIC kami akan menghubungi Anda kembali.\n\nSalam,\nDepartemen Logistik BCA Syariah`;
           const methods = formData.notificationMethods;
-
-          // Eksekusi WA PIC
           if (methods.includes('whatsapp')) {
             if (selectedPic.phone) {
               let waNumber = selectedPic.phone.replace(/[^0-9]/g, '');
@@ -166,7 +155,6 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
             }
           }
 
-          // Eksekusi Teams PIC
           if (methods.includes('teams')) {
             if (selectedPic.email) {
               window.open(`https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(selectedPic.email)}&message=${encodeURIComponent(teamsText)}`, '_blank');
@@ -175,7 +163,6 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
             }
           }
 
-          // Eksekusi Email Pemohon
           if (methods.includes('email') && formData.requesterEmail) {
             window.open(`mailto:${formData.requesterEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_self');
           }
@@ -236,7 +223,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
             <input
               required type="text" placeholder="Contoh: KCP DEPOK"
               value={formData.branchName}
-              onChange={(e) => setFormData({ ...formData, branchName: e.target.value.toUpperCase() })} // <-- ALL CAPS Logic
+              onChange={(e) => setFormData({ ...formData, branchName: e.target.value.toUpperCase() })} 
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700 uppercase"
             />
           </div>
@@ -248,7 +235,6 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
             />
           </div>
 
-          {/* INPUT BARU: EMAIL PEMOHON */}
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
               <span>Email Pemohon</span>
@@ -268,6 +254,18 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
               <option value="P3">P3 (Pemeliharaan & Aset)</option>
               <option value="Pengadaan">Pengadaan (Pembelian)</option>
               <option value="Pembayaran">Pembayaran</option>
+            </select>
+          </div>
+
+          {/* INPUT BARU: TINGKAT PRIORITAS SLA */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Tingkat Prioritas (SLA)</label>
+            <select required value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-semibold text-slate-700"
+            >
+              <option value="URGENT">URGENT (1 Hari Kerja)</option>
+              <option value="MEDIUM">MEDIUM (3 Hari Kerja)</option>
+              <option value="LOW">LOW (7 Hari Kerja)</option>
             </select>
           </div>
         </div>
@@ -336,7 +334,6 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
           )}
         </div>
 
-        {/* UPDATE: UI CHECKLIST MULTI-SELECT NOTIFIKASI */}
         <div className="space-y-3 pt-6 border-t border-slate-100">
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Kirim Notifikasi Tugas Via (Bisa Pilih &gt; 1)</label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

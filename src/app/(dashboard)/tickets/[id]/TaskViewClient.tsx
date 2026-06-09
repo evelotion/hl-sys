@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Edit, Save, Loader2, X, Calendar, Clock, CheckCircle2, AlertCircle, UploadCloud, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import imageCompression from 'browser-image-compression'; // <-- Tambahan untuk Poin 3
+import imageCompression from 'browser-image-compression'; 
 
 export default function TaskViewClient({ initialTicket, pics, currentUser }: { initialTicket: any, pics: any[], currentUser: any }) {
   const router = useRouter();
@@ -15,7 +15,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [isUploading, setIsUploading] = useState(false); // <-- State Upload Poin 3
+  const [isUploading, setIsUploading] = useState(false); 
   
   const [comment, setComment] = useState('');
   const [isCommenting, setIsCommenting] = useState(false);
@@ -26,6 +26,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     title: ticket?.title || '',
     description: ticket?.description || '',
     category: ticket?.category || '',
+    priority: ticket?.priority || 'MEDIUM', // <-- TAMBAHAN STATE PRIORITAS
     branchName: ticket?.branchName || '',
     picId: ticket?.picId || '',
     requestDate: ticket?.requestDate ? new Date(ticket.requestDate).toISOString().split('T')[0] : '',
@@ -44,20 +45,17 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     return false;
   }) || [];
 
-  // LOGIC UPLOAD GAMBAR BARU (Poin 3)
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
     try {
-      // 1. Kompres gambar dulu biar ringan
       const options = { maxSizeMB: 1, maxWidthOrHeight: 1024, useWebWorker: true };
       const compressedFile = await imageCompression(file, options);
       
       const uploadData = new FormData();
       uploadData.append('file', compressedFile);
 
-      // 2. Tembak ke API lokal kita sendiri (Bebas CORS & Firewall!)
       const res = await fetch('/api/upload', { 
         method: 'POST', 
         body: uploadData 
@@ -66,7 +64,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       const data = await res.json();
       
       if (data.success && data.url) {
-        // 3. Masukkan URL gambar dari server ke state editForm
         setEditForm({ ...editForm, issueImgUrl: data.url });
         toast.success("Gambar berhasil diunggah!");
       } else {
@@ -79,14 +76,14 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       setIsUploading(false);
     }
   };
+
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!comment.trim()) return;
     setIsCommenting(true);
     
-    // Simpan teks komentar ke variabel sementara biar aman
     const currentComment = comment; 
-    setComment(''); // Langsung kosongkan input box (Instan Feedback)
+    setComment(''); 
     
     try {
       const res = await fetch(`/api/tickets/${ticket.id}`, {
@@ -98,9 +95,8 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       if (res.ok) {
         toast.success('Catatan berhasil dikirim!', { style: { borderRadius: '12px', background: '#333', color: '#fff' } });
         
-        // --- OPTIMISTIC UPDATE: Masukkan komentar pura-pura ke UI secara instan ---
         const newLog = {
-          id: Date.now().toString(), // ID sementara
+          id: Date.now().toString(), 
           action: 'COMMENT',
           message: currentComment,
           createdAt: new Date().toISOString(),
@@ -112,12 +108,11 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
         };
         setTicket({ ...ticket, logs: [...(ticket.logs || []), newLog] });
         
-        // Sync background
         router.refresh();
       }
     } catch (error) {
       toast.error('Gagal mengirim catatan!');
-      setComment(currentComment); // Kembalikan teks jika gagal
+      setComment(currentComment); 
     } finally {
       setIsCommenting(false);
     }
@@ -138,16 +133,12 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
         setIsEditOpen(false);
         toast.success('Perubahan berhasil disimpan!', { style: { borderRadius: '12px', background: '#333', color: '#fff' } });
         
-        // IMPROVE POIN 1: NOTIFIKASI MS TEAMS UNTUK RE-ASSIGNMENT
         if (data.isReassigned && data.ticket.pic) {
            const newPic = data.ticket.pic;
            const isSendNotif = window.confirm(`Tiket di-reassign ke ${newPic.name}. Ingin kirim notifikasi penugasan ke MS Teams yang bersangkutan?`);
            if (isSendNotif && newPic.email) {
               const loginLink = `${window.location.origin}/login?nip=${newPic.initial}&pwd=password123`;
-              
-              // HILANGKAN BINTANG DI SINI UNTUK TEAMS
               const notifText = `🚨 RE-ASSIGNMENT TUGAS HL-SYS 🚨\n\nHalo ${newPic.name}, ada tugas logistik yang baru saja dialihkan/di-reassign ke kamu nih:\n\nNo. Tiket: ${ticket.ticketNumber}\nKategori: ${data.ticket.category}\nPerihal: ${data.ticket.title}\n\nSegera cek detail pekerjaan di sistem:\n${loginLink}`;
-              
               const teamsUrl = `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(newPic.email)}&message=${encodeURIComponent(notifText)}`;
               window.open(teamsUrl, '_blank');
            } else if (isSendNotif && !newPic.email) {
@@ -164,7 +155,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     }
   };
 
-  // IMPROVE POIN 6: HANDLE DELETE TICKET
   const handleDeleteTicket = async () => {
     if (!window.confirm("⚠️ PERINGATAN: Anda yakin ingin menghapus tiket ini secara permanen? Seluruh riwayat akan hilang dan tidak dapat dikembalikan.")) return;
     
@@ -232,6 +222,12 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
           <div className="bg-white p-8 rounded-[24px] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
             <div className="flex flex-wrap items-center gap-3 mb-6">
               <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-100">{ticket?.ticketNumber}</span>
+              
+              {/* --- TAMBAHAN BADGE PRIORITAS DI SINI --- */}
+              {ticket?.priority === 'URGENT' && <span className="px-3 py-1 bg-red-50 text-red-600 text-xs font-black rounded-lg border border-red-100 shadow-sm tracking-wider">🚨 URGENT</span>}
+              {ticket?.priority === 'MEDIUM' && <span className="px-3 py-1 bg-amber-50 text-amber-600 text-xs font-black rounded-lg border border-amber-100 shadow-sm tracking-wider">⚡ MEDIUM</span>}
+              {ticket?.priority === 'LOW' && <span className="px-3 py-1 bg-slate-50 text-slate-500 text-xs font-black rounded-lg border border-slate-200 shadow-sm tracking-wider">🟢 LOW</span>}
+
               <span className="px-3 py-1 bg-slate-50 text-slate-600 text-xs font-bold rounded-lg border border-slate-200">{ticket?.category}</span>
               <span className={`px-3 py-1 text-xs font-bold rounded-lg border ${
                 ticket?.status === 'DONE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
@@ -302,7 +298,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
               <p className="font-bold text-slate-800">{ticket?.branchName}</p>
             </div>
             
-            {/* TAMBAHAN: INFO PEMOHON / PELAPOR */}
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Pemohon / Pelapor</p>
               
@@ -379,6 +374,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                     <input type="date" required max={todayLocal} value={editForm.requestDate} onChange={(e) => setEditForm({ ...editForm, requestDate: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300" />
                   </div>
 
+                  {/* TAMBAHAN GRID UNTUK KATEGORI DAN PRIORITAS */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-slate-500">Kategori</label>
@@ -389,14 +385,23 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-500">Ubah PIC</label>
-                      <select value={editForm.picId} onChange={(e) => setEditForm({ ...editForm, picId: e.target.value })} className="w-full px-3 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl text-sm font-bold outline-none focus:border-indigo-300">
-                        <option value="" disabled>-- Pilih PIC Baru --</option>
-                        {filteredPics.map((pic: any) => (
-                          <option key={pic.id} value={pic.id}>{pic.name} ({pic.initial})</option>
-                        ))}
+                      <label className="text-xs font-bold text-slate-500">Prioritas (SLA)</label>
+                      <select value={editForm.priority} onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300">
+                        <option value="URGENT">URGENT (1 Hari)</option>
+                        <option value="MEDIUM">MEDIUM (3 Hari)</option>
+                        <option value="LOW">LOW (7 Hari)</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500">Ubah PIC</label>
+                    <select value={editForm.picId} onChange={(e) => setEditForm({ ...editForm, picId: e.target.value })} className="w-full px-3 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl text-sm font-bold outline-none focus:border-indigo-300">
+                      <option value="" disabled>-- Pilih PIC Baru --</option>
+                      {filteredPics.map((pic: any) => (
+                        <option key={pic.id} value={pic.id}>{pic.name} ({pic.initial})</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="space-y-1">
@@ -409,7 +414,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                     <textarea required rows={3} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300 resize-none"></textarea>
                   </div>
 
-                  {/* IMPROVE POIN 3: FITUR UBAH/TAMBAH GAMBAR DI MODAL EDIT */}
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">File Pendukung (Opsional)</label>
                     {!editForm.issueImgUrl ? (
@@ -430,7 +434,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
               </div>
 
               <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
-                {/* IMPROVE POIN 6: TOMBOL HAPUS TIKET */}
                 <button type="button" onClick={handleDeleteTicket} disabled={isSaving} className="flex items-center gap-1.5 px-4 py-2 text-red-500 font-bold hover:bg-red-100 rounded-xl transition-colors text-xs disabled:opacity-50">
                   <Trash2 size={14} /> Hapus Tiket
                 </button>

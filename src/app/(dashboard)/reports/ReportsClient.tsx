@@ -16,7 +16,8 @@ export default function ReportsClient({ tickets }: { tickets: any[] }) {
       const sheet = workbook.addWorksheet('Laporan Logistik');
 
       // 1. Styling Judul Laporan (Header Utama)
-      sheet.mergeCells('A1', 'I1');
+      // Lebarin merge cells sampai J1 dan J2 karena ada tambahan kolom Prioritas
+      sheet.mergeCells('A1', 'J1'); 
       const titleCell = sheet.getCell('A1');
       titleCell.value = 'REPORT KINERJA HOTLINE LOGISTIK (HL-SYS) BCA SYARIAH';
       titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -24,7 +25,7 @@ export default function ReportsClient({ tickets }: { tickets: any[] }) {
       titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
       
       const dateCell = sheet.getCell('A2');
-      sheet.mergeCells('A2', 'I2');
+      sheet.mergeCells('A2', 'J2');
       dateCell.value = `Tanggal Tarik Data: ${new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}`;
       dateCell.font = { name: 'Arial', size: 10, italic: true };
       dateCell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -32,10 +33,11 @@ export default function ReportsClient({ tickets }: { tickets: any[] }) {
       // Spacing
       sheet.addRow([]);
 
-      // 2. Setup Kolom Tabel
+      // 2. Setup Kolom Tabel (TAMBAHAN KOLOM PRIORITAS DI SINI)
       sheet.columns = [
         { header: 'No', key: 'no', width: 5 },
         { header: 'ID TIKET', key: 'ticketNumber', width: 18 },
+        { header: 'PRIORITAS', key: 'priority', width: 15 }, // <-- TAMBAHAN KOLOM
         { header: 'TANGGAL REQUEST', key: 'requestDate', width: 20 },
         { header: 'KATEGORI', key: 'category', width: 20 },
         { header: 'CABANG/UNIT', key: 'branchName', width: 25 },
@@ -65,6 +67,7 @@ export default function ReportsClient({ tickets }: { tickets: any[] }) {
         const row = sheet.addRow({
           no: index + 1,
           ticketNumber: t.ticketNumber,
+          priority: t.priority || 'MEDIUM', // <-- MASUKIN DATA PRIORITAS
           requestDate: reqDate,
           category: t.category,
           branchName: t.branchName,
