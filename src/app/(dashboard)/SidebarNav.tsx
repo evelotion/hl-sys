@@ -32,10 +32,14 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
 
   const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Manajemen Tiket', href: '/tickets', icon: Ticket }, // <-- Nama disamakan dengan Poin 4
+    { name: 'Manajemen Tiket', href: '/tickets', icon: Ticket },
     { name: 'Reports', href: '/reports', icon: FileSpreadsheet },
-    { name: 'Manajemen User', href: '/users', icon: Users },
   ];
+
+  // Logic: Kalau rolenya OPERATOR, baru push menu Manajemen User
+  if (userRole === 'OPERATOR') {
+    navItems.push({ name: 'Manajemen User', href: '/users', icon: Users });
+  }
 
   const handleLogout = async () => {
     setIsLoggingOut(true);

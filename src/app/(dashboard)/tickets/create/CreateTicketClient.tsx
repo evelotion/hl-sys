@@ -42,6 +42,9 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
   const filteredPics = pics.filter(pic => {
+    // TAHAP 2: Ibu Andreanne selalu muncul di kategori manapun
+    if (pic.initial === 'ABC') return true; 
+
     if (formData.category === 'P3') return p3Initials.includes(pic.initial);
     if (formData.category === 'Pembayaran') return pembayaranInitials.includes(pic.initial);
     if (formData.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial);

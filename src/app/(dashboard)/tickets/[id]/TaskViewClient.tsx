@@ -26,7 +26,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     title: ticket?.title || '',
     description: ticket?.description || '',
     category: ticket?.category || '',
-    priority: ticket?.priority || 'MEDIUM', // <-- TAMBAHAN STATE PRIORITAS
+    priority: ticket?.priority || 'MEDIUM',
     branchName: ticket?.branchName || '',
     picId: ticket?.picId || '',
     requestDate: ticket?.requestDate ? new Date(ticket.requestDate).toISOString().split('T')[0] : '',
@@ -38,7 +38,14 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
   const pembayaranInitials = ['RIN', 'ETK', 'RKS', 'RLY'];
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
+  // TAHAP 3: Definisi akses Edit untuk Kepala Bidang
+  const isKabid = ['FER', 'RML', 'RIN'].includes(currentUser?.initial);
+  const canEdit = currentUser?.role === 'OPERATOR' || isKabid;
+
   const filteredPics = pics?.filter(pic => {
+    // TAHAP 2: Ibu Andreanne selalu muncul di kategori manapun
+    if (pic.initial === 'ABC') return true;
+    
     if (editForm.category === 'P3') return p3Initials.includes(pic.initial);
     if (editForm.category === 'Pembayaran') return pembayaranInitials.includes(pic.initial);
     if (editForm.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial);
@@ -210,7 +217,8 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
           <ArrowLeft size={16} /> Kembali ke Daftar
         </button>
         
-        {currentUser?.role === 'OPERATOR' && (
+        {/* FIX: Ubah jadi canEdit biar Kepala Bidang juga lihat tombol ini */}
+        {canEdit && (
           <button onClick={() => setIsEditOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:shadow-md hover:border-indigo-200 hover:text-indigo-600 transition-all text-sm">
             <Edit size={16} /> Edit Tiket
           </button>
@@ -223,7 +231,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
             <div className="flex flex-wrap items-center gap-3 mb-6">
               <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-100">{ticket?.ticketNumber}</span>
               
-              {/* --- TAMBAHAN BADGE PRIORITAS DI SINI --- */}
               {ticket?.priority === 'URGENT' && <span className="px-3 py-1 bg-red-50 text-red-600 text-xs font-black rounded-lg border border-red-100 shadow-sm tracking-wider">🚨 URGENT</span>}
               {ticket?.priority === 'MEDIUM' && <span className="px-3 py-1 bg-amber-50 text-amber-600 text-xs font-black rounded-lg border border-amber-100 shadow-sm tracking-wider">⚡ MEDIUM</span>}
               {ticket?.priority === 'LOW' && <span className="px-3 py-1 bg-slate-50 text-slate-500 text-xs font-black rounded-lg border border-slate-200 shadow-sm tracking-wider">🟢 LOW</span>}
@@ -341,7 +348,8 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
             </div>
           </div>
 
-         {ticket?.status !== 'DONE' && (currentUser?.id === ticket?.picId || currentUser?.role === 'OPERATOR') && (
+         {/* FIX: Ubah jadi canEdit biar Kepala Bidang bisa bantu ngatur status kerja kalau diperlukan */}
+         {ticket?.status !== 'DONE' && (currentUser?.id === ticket?.picId || canEdit) && (
             <div className="bg-slate-50 p-4 rounded-[24px] border border-slate-200/60 shadow-inner flex flex-col gap-3">
               {ticket?.status === 'OPEN' && (
                 <button onClick={() => handleUpdateStatus('IN_PROGRESS')} disabled={isUpdatingStatus} className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-md transition-colors text-sm">
@@ -374,7 +382,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                     <input type="date" required max={todayLocal} value={editForm.requestDate} onChange={(e) => setEditForm({ ...editForm, requestDate: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300" />
                   </div>
 
-                  {/* TAMBAHAN GRID UNTUK KATEGORI DAN PRIORITAS */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-slate-500">Kategori</label>
