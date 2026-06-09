@@ -104,11 +104,13 @@ export default async function DashboardPage() {
       progress: progress,
       sla: sla,
       pic: t.pic?.initial || 'N/A',
+      picName: t.pic?.name || 'PIC',         // <-- TAMBAHAN KONTAK PIC
+      picPhone: t.pic?.phone || '',          // <-- TAMBAHAN KONTAK PIC
+      picEmail: t.pic?.email || '',          // <-- TAMBAHAN KONTAK PIC
       title: t.title,
       category: t.category,
+      priority: t.priority || 'MEDIUM',      // <-- TAMBAHAN PRIORITAS
       cabang: t.branchName,
-      
-      // --- UBAH BARIS INI BRO ---
       date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' WIB'
     };
   };
@@ -122,12 +124,14 @@ export default async function DashboardPage() {
   const formattedActiveSla = activeSlaTickets.map(formatTicketData);
   const urgentTicket = formattedActiveSla.length > 0 ? formattedActiveSla[0] : null;
 
-  // Hitung total tiket yang SLA-nya sudah masuk zona merah (80% ke atas)
-  const totalCritical = formattedActiveSla.filter(t => t.sla >= 80).length;
+  // FIX: Ambil seluruh daftar tiket kritis, bukan cuma total angkanya
+  const criticalTickets = formattedActiveSla.filter(t => t.sla >= 80);
 
+  // UBAH FUNGSI TABEL UTAMA JADI "LIVE PROGRESS BOARD"
+  // Hanya ambil yang IN_PROGRESS
   const recentData = await db.ticket.findMany({
-    where: { ...whereBase, status: { not: 'DONE' } },
-    orderBy: { createdAt: 'desc' },
+    where: { ...whereBase, status: 'IN_PROGRESS' }, // <-- UBAH KE IN_PROGRESS
+    orderBy: { createdAt: 'desc' }, // <-- Urutkan dari yang terakhir diupdate
     take: 15,
     include: { pic: true }
   });
@@ -145,7 +149,7 @@ export default async function DashboardPage() {
       userName={user.name}
       recentTickets={recentTickets}
       urgentTicket={urgentTicket} 
-      totalCritical={totalCritical}
+      criticalTickets={criticalTickets} // <-- PASSING DAFTAR TIKET KRITIS
     />
   );
 }
