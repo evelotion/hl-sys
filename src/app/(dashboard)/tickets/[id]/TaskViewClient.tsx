@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Save, Loader2, X, Calendar, Clock, CheckCircle2, AlertCircle, UploadCloud, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Save, Loader2, X, Calendar, Clock, CheckCircle2, AlertCircle, UploadCloud, Trash2, MessageCircle, Mail, Send, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression'; 
 
@@ -143,7 +143,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
            const newPic = data.ticket.pic;
            const isSendNotif = window.confirm(`Tiket di-reassign ke ${newPic.name}. Ingin kirim notifikasi penugasan ke MS Teams yang bersangkutan?`);
            if (isSendNotif && newPic.email) {
-              // FIX: Hapus password dari URL agar aman
               const loginLink = `${window.location.origin}/login?nip=${newPic.initial}`;
               
               const notifText = `🚨 RE-ASSIGNMENT TUGAS HL-SYS 🚨\n\nHalo ${newPic.name}, ada tugas logistik yang baru saja dialihkan/di-reassign ke kamu nih:\n\nNo. Tiket: ${ticket.ticketNumber}\nKategori: ${data.ticket.category}\nPerihal: ${data.ticket.title}\n\nSegera cek detail pekerjaan di sistem:\n${loginLink}`;
@@ -203,6 +202,37 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       setIsUpdatingStatus(false);
     }
   };
+
+  // --- FUNGSI RESEND NOTIFIKASI AWAL ---
+  const handleResendWA = () => {
+    if (!ticket.pic?.phone) return toast.error('Nomor WhatsApp PIC belum terdaftar!');
+    let waNumber = ticket.pic.phone.replace(/[^0-9]/g, '');
+    if (waNumber.startsWith('0')) waNumber = '62' + waNumber.substring(1);
+    
+    const loginLink = `${window.location.origin}/login?nip=${ticket.pic.initial}`;
+    const waText = `*🚨 TUGAS BARU HL-SYS 🚨*\n\nHalo ${ticket.pic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\n*No. Tiket:* ${ticket.ticketNumber}\n*Prioritas SLA:* ${ticket.priority}\n*Kategori:* ${ticket.category}\n*Cabang/Unit:* ${ticket.branchName}\n*Pemohon:* ${ticket.requesterName}\n*Perihal:* ${ticket.title}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
+    
+    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`, '_blank');
+  };
+
+  const handleResendTeams = () => {
+    if (!ticket.pic?.email) return toast.error('Email Teams PIC belum terdaftar!');
+    
+    const loginLink = `${window.location.origin}/login?nip=${ticket.pic.initial}`;
+    const teamsText = `🚨 TUGAS BARU HL-SYS 🚨\n\nHalo ${ticket.pic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\nNo. Tiket: ${ticket.ticketNumber}\nPrioritas SLA: ${ticket.priority}\nKategori: ${ticket.category}\nCabang/Unit: ${ticket.branchName}\nPemohon: ${ticket.requesterName}\nPerihal: ${ticket.title}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
+    
+    window.open(`https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(ticket.pic.email)}&message=${encodeURIComponent(teamsText)}`, '_blank');
+  };
+
+  const handleResendEmail = () => {
+    if (!ticket.requesterEmail) return toast.error('Email pemohon tidak terdaftar!');
+    
+    const emailSubject = `[${ticket.priority}] Konfirmasi Tiket Layanan Logistik: ${ticket.ticketNumber} - ${ticket.title}`;
+    const emailBody = `Yth. Bapak/Ibu ${ticket.requesterName},\n\nTerima kasih telah menghubungi Layanan Hotline Logistik BCA Syariah.\n\nBerikut adalah ringkasan tiket Anda yang telah kami terima dan masuk ke dalam antrean pengerjaan tim kami:\n\n- No. Tiket: ${ticket.ticketNumber}\n- Prioritas: ${ticket.priority}\n- Kategori: ${ticket.category}\n- Cabang/Unit: ${ticket.branchName}\n- Perihal: ${ticket.title}\n- Deskripsi: ${ticket.description}\n- PIC Bertugas: ${ticket.pic?.name || 'Belum di-assign'}\n\nKami akan segera menindaklanjuti permintaan ini sesuai dengan Standard Service Level Agreement (SLA) yang berlaku. Apabila ada informasi tambahan, PIC kami akan menghubungi Anda kembali.\n\nSalam,\nDepartemen Logistik BCA Syariah`;
+    
+    window.open(`mailto:${ticket.requesterEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_self');
+  };
+  // ------------------------------------
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
@@ -357,7 +387,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
             </div>
           </div>
 
-         {ticket?.status !== 'DONE' && (currentUser?.id === ticket?.picId || canEdit) && (
+          {ticket?.status !== 'DONE' && (currentUser?.id === ticket?.picId || canEdit) && (
             <div className="bg-slate-50 p-4 rounded-[24px] border border-slate-200/60 shadow-inner flex flex-col gap-3">
               {ticket?.status === 'OPEN' && (
                 <button onClick={() => handleUpdateStatus('IN_PROGRESS')} disabled={isUpdatingStatus} className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-md transition-colors text-sm">
@@ -369,6 +399,31 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                   {isUpdatingStatus ? 'Memproses...' : 'Tandai Selesai (Done)'}
                 </button>
               )}
+            </div>
+          )}
+
+          {/* --- TOMBOL RESEND KHUSUS UNTUK ADMIN/KABID --- */}
+          {canEdit && (
+            <div className="bg-white p-5 rounded-[24px] border border-slate-200/60 shadow-[0_4px_20px_rgb(0,0,0,0.03)] space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Send size={16} className="text-slate-400" />
+                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Resend Notifikasi Awal</p>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                <button onClick={handleResendWA} className="flex items-center justify-between px-4 py-2.5 bg-emerald-50 text-emerald-700 font-bold rounded-xl hover:bg-emerald-100 transition-colors text-xs border border-emerald-200">
+                  <span className="flex items-center gap-2"><MessageCircle size={14}/> WhatsApp PIC</span>
+                  <ArrowRight size={12} className="opacity-50" />
+                </button>
+                <button onClick={handleResendTeams} className="flex items-center justify-between px-4 py-2.5 bg-indigo-50 text-indigo-700 font-bold rounded-xl hover:bg-indigo-100 transition-colors text-xs border border-indigo-200">
+                  <span className="flex items-center gap-2"><Mail size={14}/> Teams PIC</span>
+                  <ArrowRight size={12} className="opacity-50" />
+                </button>
+                <button onClick={handleResendEmail} className="flex items-center justify-between px-4 py-2.5 bg-blue-50 text-blue-700 font-bold rounded-xl hover:bg-blue-100 transition-colors text-xs border border-blue-200">
+                  <span className="flex items-center gap-2"><Send size={14}/> Email Pemohon</span>
+                  <ArrowRight size={12} className="opacity-50" />
+                </button>
+              </div>
+              <p className="text-[9px] text-slate-400 mt-2 leading-tight">Gunakan jika browser memblokir pop-up otomatis saat pembuatan tiket pertama kali.</p>
             </div>
           )}
         </div>
