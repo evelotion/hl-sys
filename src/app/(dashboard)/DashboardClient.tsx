@@ -15,10 +15,10 @@ interface TicketData {
 }
 
 export default function DashboardClient({
-  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket, criticalTickets, latestTickets // <-- Tambahan props latestTickets
+  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket // <-- Tambah newestTicket
 }: {
   totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; userRole: string; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
-  criticalTickets: TicketData[]; latestTickets: TicketData[]; // <-- Tambahan type latestTickets
+  criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null; // <-- Type
 }) {
   const safeTotal = totalRequest === 0 ? 1 : totalRequest;
   const donePercentage = totalRequest === 0 ? 0 : Math.round((completed / safeTotal) * 100);
@@ -31,6 +31,7 @@ export default function DashboardClient({
 
   const [selectedUrgentTicket, setSelectedUrgentTicket] = useState<TicketData | null>(null);
   const [showCriticalList, setShowCriticalList] = useState(false); 
+  const [showLatestList, setShowLatestList] = useState(false); // <-- STATE MODAL LIST TERBARU
 
   const [greeting, setGreeting] = useState("Selamat Datang");
   useEffect(() => {
@@ -54,7 +55,6 @@ export default function DashboardClient({
 
   const firstName = userName ? userName.split(" ")[0] : "Guest";
 
-  // Logic Follow Up WA & Teams
   const handleFollowUpWA = (ticket: TicketData) => {
     if (!ticket.picPhone) return alert('Nomor WhatsApp PIC belum terdaftar!');
     let waNumber = ticket.picPhone.replace(/[^0-9]/g, '');
@@ -69,7 +69,6 @@ export default function DashboardClient({
     window.open(`https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(ticket.picEmail)}&message=${encodeURIComponent(text)}`, '_blank');
   };
 
-  // Helper render PIC Workload ...
   const renderPICGroup = (title: string, data: PICWorkloadData[]) => {
     if (data.length === 0) return null;
     return (
@@ -225,6 +224,8 @@ export default function DashboardClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* --- KOLOM KIRI (SLA Kritis + Tiket Terbaru) --- */}
         <div className="flex flex-col gap-4">
+          
+          {/* CARD SLA KRITIS (Warna Merah) */}
           <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-sm flex flex-col min-h-[220px] relative">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500 rounded-l-2xl"></div>
             <div className="flex items-center justify-between mb-3 pl-2">
@@ -275,23 +276,55 @@ export default function DashboardClient({
             )}
           </div>
 
-          {/* --- KARTU TIKET TERBARU --- */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[200px]">
-            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">5 Tiket Masuk Terbaru</h3>
-            <div className="space-y-2 overflow-y-auto max-h-[200px] pr-1 custom-scrollbar">
-              {latestTickets.map((t, idx) => (
-                <div key={idx} onClick={() => setSelectedUrgentTicket(t)} className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl flex justify-between items-center text-xs hover:border-indigo-200 transition-colors cursor-pointer active:scale-[0.98]">
-                  <div className="overflow-hidden mr-2">
-                    <p className="font-bold text-slate-800 truncate">{t.title}</p>
-                    <p className="text-[9px] text-slate-400 font-medium">{t.id} • {t.cabang}</p>
-                  </div>
-                  <span className={`px-2 py-0.5 text-[8px] font-black rounded shrink-0 ${getStatusColor(t.status)}`}>
-                    {t.status}
-                  </span>
-                </div>
-              ))}
-              {latestTickets.length === 0 && <p className="text-[10px] text-slate-400 text-center py-4">Belum ada tiket masuk.</p>}
+          {/* --- KARTU TIKET TERBARU (Warna Biru) --- */}
+          <div className="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm flex flex-col min-h-[220px] relative">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 rounded-l-2xl"></div>
+            <div className="flex items-center justify-between mb-3 pl-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1.5"><Clock size={14} /> Tiket Masuk Terbaru</h3>
+                {latestTickets.length > 0 && (
+                  <button onClick={() => setShowLatestList(true)} className="px-2 py-0.5 bg-blue-100 text-blue-700 hover:bg-blue-200 text-[9px] font-black rounded-md border border-blue-200 shadow-sm transition-colors cursor-pointer active:scale-95">
+                    Lihat Semua ({latestTickets.length})
+                  </button>
+                )}
+              </div>
+              {newestTicket && newestTicket.status === 'REQUEST' && (
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+              )}
             </div>
+            {newestTicket ? (
+              <div className="flex-1 flex flex-col justify-center pl-2">
+                <div onClick={() => setSelectedUrgentTicket(newestTicket)} className="cursor-pointer hover:shadow-md transition-all bg-gradient-to-br from-blue-50/50 to-white border border-blue-100 p-4 rounded-xl flex flex-col gap-3">
+                  <div>
+                    <div className="flex justify-between items-start gap-3 mb-2">
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-black rounded-md">{newestTicket.id}</span>
+                      <span className="text-[9px] text-slate-500 font-bold">{newestTicket.date}</span>
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-800 line-clamp-2 leading-snug mb-3">{newestTicket.title}</h4>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[9px] font-bold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded flex items-center gap-1"><Tags size={10} /> {newestTicket.category}</span>
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-1"><User size={10} /> PIC: {newestTicket.pic}</span>
+                    </div>
+                  </div>
+                  <div className="pt-3 border-t border-blue-100/50 mt-auto">
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-[9px] font-bold text-slate-500">Status Awal: <span className="text-blue-600 font-black">{newestTicket.progress}% Berjalan</span></span>
+                      <span className={`px-1.5 py-0.5 text-[8px] font-black rounded-md border ${getStatusColor(newestTicket.status)}`}>{newestTicket.status}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${Math.max(newestTicket.progress, 15)}%` }} className={`h-full bg-blue-500`}></motion.div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center border-2 border-dashed border-slate-100 rounded-xl p-4 ml-2">
+                <span className="text-[10px] font-medium text-slate-400">Belum ada tiket masuk baru.</span>
+              </div>
+            )}
           </div>
           {/* --- END KARTU TIKET TERBARU --- */}
 
@@ -366,9 +399,41 @@ export default function DashboardClient({
         )}
       </AnimatePresence>
 
-      {/* --- MODAL 2: DETAIL TIKET & FOLLOW UP --- */}
+      {/* --- MODAL 2: DAFTAR SEMUA TIKET TERBARU (MODAL BARU) --- */}
       <AnimatePresence>
-        {selectedUrgentTicket && !showCriticalList && (
+        {showLatestList && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[24px] shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col border border-blue-100 overflow-hidden">
+              <div className="px-6 py-4 border-b border-blue-50 flex items-center justify-between bg-blue-50/50 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Clock size={18} className="text-blue-600"/>
+                  <h3 className="font-black text-blue-700">Daftar Tiket Terbaru Masuk ({latestTickets.length})</h3>
+                </div>
+                <button onClick={() => setShowLatestList(false)} className="text-blue-400 hover:text-blue-600 transition-colors"><X size={20}/></button>
+              </div>
+              <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
+                {latestTickets.map((ticket, idx) => (
+                   <div key={idx} onClick={() => { setShowLatestList(false); setSelectedUrgentTicket(ticket); }} className="p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-blue-200 hover:shadow-md cursor-pointer transition-all">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded-md">{ticket.id}</span>
+                        <span className={`px-1.5 py-0.5 text-[8px] font-black rounded-md border ${getStatusColor(ticket.status)}`}>{ticket.status}</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-800 line-clamp-1">{ticket.title}</h4>
+                      <div className="flex justify-between items-center mt-2">
+                        <p className="text-[10px] text-slate-500">PIC: <span className="font-bold text-slate-700">{ticket.picName}</span></p>
+                        <span className="text-[9px] text-slate-500 font-bold">{ticket.date}</span>
+                      </div>
+                   </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- MODAL 3: DETAIL TIKET & FOLLOW UP --- */}
+      <AnimatePresence>
+        {selectedUrgentTicket && !showCriticalList && !showLatestList && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[24px] shadow-2xl w-full max-w-lg border border-slate-100 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">

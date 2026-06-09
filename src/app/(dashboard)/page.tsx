@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   const onProgress = await db.ticket.count({ where: { ...whereBase, status: 'IN_PROGRESS' } });
   const completed = await db.ticket.count({ where: { ...whereBase, status: 'DONE' } });
 
-  // 2. SLA Tracking (Berdasarkan Total Request)
+  // 2. SLA Tracking
   const allTicketsForSLA = await db.ticket.findMany({
     where: whereBase,
     select: { createdAt: true, resolvedAt: true, slaDeadline: true, status: true }
@@ -131,14 +131,15 @@ export default async function DashboardPage() {
   });
   const recentTickets = recentData.map(formatTicketData);
 
-  // 5. TIKET MASUK TERBARU (Apapun statusnya, ambil 5 terakhir) --> INI YANG BARU
+  // 5. TIKET MASUK TERBARU (Ambil 10 tiket)
   const latestTicketsData = await db.ticket.findMany({
     where: whereBase,
     orderBy: { createdAt: 'desc' },
-    take: 5,
+    take: 10,
     include: { pic: true }
   });
   const latestTickets = latestTicketsData.map(formatTicketData);
+  const newestTicket = latestTickets.length > 0 ? latestTickets[0] : null; // <-- TIKET PALING BARU
 
   return (
     <DashboardClient 
@@ -153,7 +154,8 @@ export default async function DashboardPage() {
       recentTickets={recentTickets}
       urgentTicket={urgentTicket} 
       criticalTickets={criticalTickets} 
-      latestTickets={latestTickets} // <-- PASSING DATA BARU KE CLIENT
+      latestTickets={latestTickets} 
+      newestTicket={newestTicket} // <-- PASSING TIKET TERBARU
     />
   );
 }
