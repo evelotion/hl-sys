@@ -34,12 +34,14 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     issueImgUrl: ticket?.issueImgUrl || ''
   });
 
-  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM']; 
-  const pembayaranInitials = ['RIN', 'ETK', 'RKS']; 
+  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM'];
+  const pembayaranInitials = ['RIN', 'ETK', 'RKS'];
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
-  const isKabid = ['FER', 'RML', 'RIN'].includes(currentUser?.initial);
-  const canEdit = currentUser?.role === 'OPERATOR' || currentUser?.role === 'ADMIN' || isKabid;
+  // FIX LOGIC AKSES EDIT: Dept Head & Kabid punya akses bypass edit
+  const isHead = ['ABC', 'FER', 'RML', 'RIN'].includes(currentUser?.initial);
+  const safeRole = currentUser?.role?.toUpperCase() || '';
+  const canEdit = safeRole === 'OPERATOR' || safeRole.includes('ADMIN') || isHead;
 
   const filteredPics = pics?.filter(pic => {
     if (pic.initial === 'ABC') return true;
@@ -214,6 +216,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
           <ArrowLeft size={16} /> Kembali ke Daftar
         </button>
         
+        {/* Tombol Edit ini sekarang bakal nongol buat OPERATOR, ADMIN, dan HEADS (ABC, FER, dll) */}
         {canEdit && (
           <button onClick={() => setIsEditOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:shadow-md hover:border-indigo-200 hover:text-indigo-600 transition-all text-sm">
             <Edit size={16} /> Edit Tiket
@@ -405,7 +408,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                     </div>
                   </div>
 
-                  {/* TAMBAHAN BARU: Cabang/Unit dan Media Laporan */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-slate-500">Cabang / Unit</label>
