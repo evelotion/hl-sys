@@ -4,8 +4,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Ticket, Package, LogOut, Loader2, Users, FileSpreadsheet, ChevronUp, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion'; // <-- Tambahan framer-motion untuk animasi dropdown
+import { LayoutDashboard, Ticket, Package, LogOut, Loader2, Users, FileSpreadsheet, ChevronUp, ChevronDown, Lock, Eye, EyeOff, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion'; 
+import toast from 'react-hot-toast';
 
 export default function SidebarNav({ userName, userRole }: { userName: string, userRole: string }) {
   const pathname = usePathname();
@@ -16,12 +17,20 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileDropdownOpen, setIsMobileDropdownOpen] = useState(false);
   
-  // Referensi untuk deteksi klik di luar dropdown (opsional tapi bagus buat UX)
+  // State untuk Modal Ganti Password
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+  const [passForm, setPassForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  
+  // State untuk Toggle Visibility (Mata) Password
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Fungsi tutup dropdown kalau user klik area di luar menu
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsDropdownOpen(false);
       if (mobileDropdownRef.current && !mobileDropdownRef.current.contains(event.target as Node)) setIsMobileDropdownOpen(false);
@@ -36,7 +45,6 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
     { name: 'Reports', href: '/reports', icon: FileSpreadsheet },
   ];
 
-  // Logic: Kalau rolenya OPERATOR, baru push menu Manajemen User
   if (userRole === 'OPERATOR') {
     navItems.push({ name: 'Manajemen User', href: '/users', icon: Users });
   }
@@ -52,6 +60,43 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
     } catch (error) {
       console.error("Gagal logout:", error);
       setIsLoggingOut(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passForm.newPassword !== passForm.confirmPassword) {
+      return toast.error("Password baru dan konfirmasi tidak cocok!");
+    }
+    if (passForm.newPassword.length < 6) {
+      return toast.error("Password baru minimal 6 karakter!");
+    }
+
+    setIsSubmittingPassword(true);
+    try {
+      const res = await fetch('/api/users/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          oldPassword: passForm.oldPassword,
+          newPassword: passForm.newPassword
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Password berhasil diubah!");
+        setIsPasswordModalOpen(false);
+        setPassForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+        setIsDropdownOpen(false);
+        setIsMobileDropdownOpen(false);
+      } else {
+        toast.error(data.error || "Gagal mengubah password.");
+      }
+    } catch (error) {
+      toast.error("Terjadi kesalahan sistem.");
+    } finally {
+      setIsSubmittingPassword(false);
     }
   };
 
@@ -89,7 +134,7 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
           })}
         </nav>
 
-        {/* IMPROVE POIN 10: Profil Pengguna & Dropdown Logout Desktop */}
+        {/* Profil Pengguna & Dropdown Desktop */}
         <div className="relative p-4 border-t border-slate-100/50 shrink-0 bg-white/80" ref={dropdownRef}>
           <AnimatePresence>
             {isDropdownOpen && (
@@ -98,11 +143,17 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
                 animate={{ opacity: 1, y: 0, scale: 1 }} 
                 exit={{ opacity: 0, y: 10, scale: 0.95 }} 
                 transition={{ duration: 0.2 }}
-                className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.08)] rounded-xl p-2 z-50"
+                className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.08)] rounded-xl p-2 z-50 flex flex-col gap-1"
               >
                 <div className="px-3 py-2 mb-1 border-b border-slate-50">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sesi Aktif</p>
                 </div>
+                
+                <button onClick={() => { setIsPasswordModalOpen(true); setIsDropdownOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 font-semibold hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors text-sm group">
+                  <Lock size={16} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                  <span>Ganti Password</span>
+                </button>
+
                 <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 font-semibold hover:bg-red-50 rounded-lg transition-colors group disabled:opacity-70 text-sm">
                   {isLoggingOut ? <Loader2 size={16} className="animate-spin text-red-500" /> : <LogOut size={16} className="text-red-500 group-hover:scale-110 transition-transform" />}
                   <span>{isLoggingOut ? 'Keluar...' : 'Keluar Sistem'}</span>
@@ -143,7 +194,6 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
           </div>
         </div>
 
-        {/* IMPROVE POIN 10: Dropdown Logout Mobile */}
         <div className="relative" ref={mobileDropdownRef}>
           <div 
             onClick={() => setIsMobileDropdownOpen(!isMobileDropdownOpen)} 
@@ -159,12 +209,17 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
                 animate={{ opacity: 1, y: 0, scale: 1 }} 
                 exit={{ opacity: 0, y: -10, scale: 0.95 }} 
                 transition={{ duration: 0.2 }}
-                className="absolute top-full right-0 mt-3 w-48 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.1)] rounded-xl p-2 z-50 origin-top-right"
+                className="absolute top-full right-0 mt-3 w-48 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.1)] rounded-xl p-2 z-50 origin-top-right flex flex-col gap-1"
               >
                 <div className="px-3 py-2 border-b border-slate-100 mb-1">
                   <p className="text-xs font-bold text-slate-700 truncate">{userName}</p>
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{userRole?.replace('_', ' ')}</p>
                 </div>
+                
+                <button onClick={() => { setIsPasswordModalOpen(true); setIsMobileDropdownOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-slate-600 font-bold hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors text-xs">
+                  <Lock size={14} /> Ganti Password
+                </button>
+
                 <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-2 px-3 py-2.5 text-red-600 font-bold hover:bg-red-50 rounded-lg transition-colors text-xs disabled:opacity-70">
                   {isLoggingOut ? <Loader2 size={14} className="animate-spin text-red-500" /> : <LogOut size={14} />}
                   {isLoggingOut ? 'Keluar...' : 'Keluar Sistem'}
@@ -180,7 +235,6 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
           ========================================= */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl border-t border-slate-200/60 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
         <div className="flex justify-around items-center px-2 py-2">
-          {/* Karena tombol logout pindah ke atas, sekarang item menu bisa jadi 25% (lebih lega) */}
           {navItems.map((item) => {
             const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
             const Icon = item.icon;
@@ -195,6 +249,92 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
           })}
         </div>
       </nav>
+
+      {/* =========================================
+          MODAL GANTI PASSWORD
+          ========================================= */}
+      <AnimatePresence>
+        {isPasswordModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0, scale: 0.95 }} 
+              className="bg-white rounded-[24px] shadow-2xl w-full max-w-sm border border-slate-100 overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-2 text-slate-800">
+                  <Lock size={18} className="text-indigo-600" />
+                  <h3 className="font-black">Ganti Password</h3>
+                </div>
+                <button onClick={() => setIsPasswordModalOpen(false)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={20}/></button>
+              </div>
+
+              <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+                <div className="space-y-1 relative">
+                  <label className="text-xs font-bold text-slate-500">Password Lama</label>
+                  <div className="relative">
+                    <input 
+                      type={showOld ? "text" : "password"} 
+                      required 
+                      value={passForm.oldPassword} 
+                      onChange={(e) => setPassForm({ ...passForm, oldPassword: e.target.value })} 
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300 pr-10" 
+                      placeholder="Masukkan password saat ini"
+                    />
+                    <button type="button" onClick={() => setShowOld(!showOld)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600">
+                      {showOld ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1 relative">
+                  <label className="text-xs font-bold text-slate-500">Password Baru</label>
+                  <div className="relative">
+                    <input 
+                      type={showNew ? "text" : "password"} 
+                      required 
+                      value={passForm.newPassword} 
+                      onChange={(e) => setPassForm({ ...passForm, newPassword: e.target.value })} 
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300 pr-10" 
+                      placeholder="Minimal 6 karakter"
+                    />
+                    <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600">
+                      {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1 relative">
+                  <label className="text-xs font-bold text-slate-500">Konfirmasi Password Baru</label>
+                  <div className="relative">
+                    <input 
+                      type={showConfirm ? "text" : "password"} 
+                      required 
+                      value={passForm.confirmPassword} 
+                      onChange={(e) => setPassForm({ ...passForm, confirmPassword: e.target.value })} 
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300 pr-10" 
+                      placeholder="Ulangi password baru"
+                    />
+                    <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600">
+                      {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button type="button" onClick={() => setIsPasswordModalOpen(false)} className="flex-1 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors text-sm">
+                    Batal
+                  </button>
+                  <button type="submit" disabled={isSubmittingPassword} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition-colors disabled:opacity-70 text-sm">
+                    {isSubmittingPassword ? <Loader2 size={16} className="animate-spin" /> : 'Simpan'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
