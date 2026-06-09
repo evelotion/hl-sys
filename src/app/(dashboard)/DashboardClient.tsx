@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail } from "lucide-react"; 
+import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight } from "lucide-react"; 
 
 interface PICWorkloadData { name: string; initial: string; activeTasks: number; completed: number; }
 interface PICWorkloadGroup { P3: PICWorkloadData[]; Pengadaan: PICWorkloadData[]; Pembayaran: PICWorkloadData[]; Lainnya: PICWorkloadData[]; }
@@ -15,10 +15,10 @@ interface TicketData {
 }
 
 export default function DashboardClient({
-  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket // <-- Tambah newestTicket
+  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket
 }: {
   totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; userRole: string; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
-  criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null; // <-- Type
+  criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null;
 }) {
   const safeTotal = totalRequest === 0 ? 1 : totalRequest;
   const donePercentage = totalRequest === 0 ? 0 : Math.round((completed / safeTotal) * 100);
@@ -30,8 +30,10 @@ export default function DashboardClient({
   const doneStroke = (donePercentage / 100) * circumference;
 
   const [selectedUrgentTicket, setSelectedUrgentTicket] = useState<TicketData | null>(null);
+  const [activeContextList, setActiveContextList] = useState<TicketData[]>([]); // <-- Nyimpan array list mana yg lagi dibuka
+
   const [showCriticalList, setShowCriticalList] = useState(false); 
-  const [showLatestList, setShowLatestList] = useState(false); // <-- STATE MODAL LIST TERBARU
+  const [showLatestList, setShowLatestList] = useState(false);
 
   const [greeting, setGreeting] = useState("Selamat Datang");
   useEffect(() => {
@@ -92,6 +94,11 @@ export default function DashboardClient({
     );
   };
 
+  // Logic Navigasi Next/Prev di popup Detail
+  const currentIndex = selectedUrgentTicket ? activeContextList.findIndex(t => t.id === selectedUrgentTicket.id) : -1;
+  const hasNext = currentIndex >= 0 && currentIndex < activeContextList.length - 1;
+  const hasPrev = currentIndex > 0;
+
   return (
     <div className="space-y-6 pb-10">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 md:mb-8">
@@ -149,7 +156,7 @@ export default function DashboardClient({
         {/* Mobile View */}
         <div className="md:hidden flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-1">
           {recentTickets.map((ticket, idx) => (
-            <div key={idx} onClick={() => setSelectedUrgentTicket(ticket)} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4 cursor-pointer active:scale-95 transition-all hover:border-indigo-200">
+            <div key={idx} onClick={() => { setSelectedUrgentTicket(ticket); setActiveContextList(recentTickets); }} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4 cursor-pointer active:scale-95 transition-all hover:border-indigo-200">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-700">{ticket.id}</span>
                 <span className={`px-2 py-1 border text-[9px] font-black rounded ${getStatusColor(ticket.status)}`}>{ticket.status}</span>
@@ -185,7 +192,7 @@ export default function DashboardClient({
               </thead>
              <tbody className="divide-y divide-slate-100">
                 {recentTickets.map((ticket, idx) => (
-                  <tr key={idx} onClick={() => setSelectedUrgentTicket(ticket)} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
+                  <tr key={idx} onClick={() => { setSelectedUrgentTicket(ticket); setActiveContextList(recentTickets); }} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
                     <td className="px-6 py-4 text-xs font-bold text-slate-700">{ticket.id}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3 w-full">
@@ -246,7 +253,7 @@ export default function DashboardClient({
             </div>
             {urgentTicket ? (
               <div className="flex-1 flex flex-col justify-center pl-2">
-                <div onClick={() => setSelectedUrgentTicket(urgentTicket)} className="cursor-pointer hover:shadow-md transition-all bg-gradient-to-br from-red-50/50 to-white border border-red-100 p-4 rounded-xl flex flex-col gap-3">
+                <div onClick={() => { setSelectedUrgentTicket(urgentTicket); setActiveContextList(criticalTickets); }} className="cursor-pointer hover:shadow-md transition-all bg-gradient-to-br from-red-50/50 to-white border border-red-100 p-4 rounded-xl flex flex-col gap-3">
                   <div>
                     <div className="flex justify-between items-start gap-3 mb-2">
                       <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[9px] font-black rounded-md">{urgentTicket.id}</span>
@@ -297,7 +304,7 @@ export default function DashboardClient({
             </div>
             {newestTicket ? (
               <div className="flex-1 flex flex-col justify-center pl-2">
-                <div onClick={() => setSelectedUrgentTicket(newestTicket)} className="cursor-pointer hover:shadow-md transition-all bg-gradient-to-br from-blue-50/50 to-white border border-blue-100 p-4 rounded-xl flex flex-col gap-3">
+                <div onClick={() => { setSelectedUrgentTicket(newestTicket); setActiveContextList(latestTickets); }} className="cursor-pointer hover:shadow-md transition-all bg-gradient-to-br from-blue-50/50 to-white border border-blue-100 p-4 rounded-xl flex flex-col gap-3">
                   <div>
                     <div className="flex justify-between items-start gap-3 mb-2">
                       <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-black rounded-md">{newestTicket.id}</span>
@@ -326,10 +333,8 @@ export default function DashboardClient({
               </div>
             )}
           </div>
-          {/* --- END KARTU TIKET TERBARU --- */}
 
         </div>
-        {/* --- END KOLOM KIRI --- */}
 
         {/* --- KOLOM KANAN (Completion Tracking) --- */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[300px]">
@@ -352,7 +357,6 @@ export default function DashboardClient({
             </div>
           </div>
         </div>
-        {/* --- END KOLOM KANAN --- */}
       </div>
 
       {userRole !== "PIC_LOGISTIK" && (
@@ -384,7 +388,7 @@ export default function DashboardClient({
               </div>
               <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
                 {criticalTickets.map((ticket, idx) => (
-                   <div key={idx} onClick={() => { setShowCriticalList(false); setSelectedUrgentTicket(ticket); }} className="p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-red-200 hover:shadow-md cursor-pointer transition-all">
+                   <div key={idx} onClick={() => { setShowCriticalList(false); setSelectedUrgentTicket(ticket); setActiveContextList(criticalTickets); }} className="p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-red-200 hover:shadow-md cursor-pointer transition-all">
                       <div className="flex justify-between items-start mb-2">
                         <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black rounded-md">{ticket.id}</span>
                         <span className="text-[10px] text-red-600 font-bold">SLA: {ticket.sla}%</span>
@@ -399,7 +403,7 @@ export default function DashboardClient({
         )}
       </AnimatePresence>
 
-      {/* --- MODAL 2: DAFTAR SEMUA TIKET TERBARU (MODAL BARU) --- */}
+      {/* --- MODAL 2: DAFTAR SEMUA TIKET TERBARU --- */}
       <AnimatePresence>
         {showLatestList && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -413,7 +417,7 @@ export default function DashboardClient({
               </div>
               <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
                 {latestTickets.map((ticket, idx) => (
-                   <div key={idx} onClick={() => { setShowLatestList(false); setSelectedUrgentTicket(ticket); }} className="p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-blue-200 hover:shadow-md cursor-pointer transition-all">
+                   <div key={idx} onClick={() => { setShowLatestList(false); setSelectedUrgentTicket(ticket); setActiveContextList(latestTickets); }} className="p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-blue-200 hover:shadow-md cursor-pointer transition-all">
                       <div className="flex justify-between items-start mb-2">
                         <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded-md">{ticket.id}</span>
                         <span className={`px-1.5 py-0.5 text-[8px] font-black rounded-md border ${getStatusColor(ticket.status)}`}>{ticket.status}</span>
@@ -431,17 +435,43 @@ export default function DashboardClient({
         )}
       </AnimatePresence>
 
-      {/* --- MODAL 3: DETAIL TIKET & FOLLOW UP --- */}
+      {/* --- MODAL 3: DETAIL TIKET & FOLLOW UP DENGAN NEXT/PREV --- */}
       <AnimatePresence>
         {selectedUrgentTicket && !showCriticalList && !showLatestList && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[24px] shadow-2xl w-full max-w-lg border border-slate-100 overflow-hidden">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[24px] shadow-2xl w-full max-w-lg border border-slate-100 overflow-hidden relative">
+              
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-slate-800">Detail Progress Tiket</h3>
+                  <span className="ml-2 text-[10px] font-bold text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-md">
+                    {currentIndex >= 0 ? `${currentIndex + 1} of ${activeContextList.length}` : ''}
+                  </span>
                 </div>
-                <button onClick={() => setSelectedUrgentTicket(null)} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={20}/></button>
+                <div className="flex items-center gap-3">
+                  {/* NEXT PREV BUTTONS */}
+                  <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                    <button 
+                      onClick={() => hasPrev && setSelectedUrgentTicket(activeContextList[currentIndex - 1])}
+                      disabled={!hasPrev} 
+                      className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronLeft size={16}/>
+                    </button>
+                    <div className="w-[1px] h-4 bg-slate-200"></div>
+                    <button 
+                      onClick={() => hasNext && setSelectedUrgentTicket(activeContextList[currentIndex + 1])}
+                      disabled={!hasNext} 
+                      className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronRight size={16}/>
+                    </button>
+                  </div>
+
+                  <button onClick={() => setSelectedUrgentTicket(null)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={20}/></button>
+                </div>
               </div>
+
               <div className="p-6 space-y-4">
                   <div className="flex justify-between items-center">
                       <span className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 text-xs font-black rounded-lg">{selectedUrgentTicket.id}</span>
@@ -472,7 +502,6 @@ export default function DashboardClient({
                       </div>
                   </div>
 
-                  {/* TOMBOL FOLLOW UP INSTAN */}
                   <div className="pt-4 border-t border-slate-100">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tindakan Cepat (Follow Up PIC)</p>
                     <div className="grid grid-cols-2 gap-3">

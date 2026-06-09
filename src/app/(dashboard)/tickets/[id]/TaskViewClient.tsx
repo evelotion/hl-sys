@@ -34,18 +34,16 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     issueImgUrl: ticket?.issueImgUrl || ''
   });
 
-  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL'];
-  const pembayaranInitials = ['RIN', 'ETK', 'RKS'];
+  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM']; // Tambah SEM
+  const pembayaranInitials = ['RIN', 'ETK', 'RKS']; // Hapus RLY
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
-  // TAHAP 3: Definisi akses Edit untuk Kepala Bidang
+  // FIX TAHAP 3: Pastikan role ADMIN juga bisa lihat tombol edit
   const isKabid = ['FER', 'RML', 'RIN'].includes(currentUser?.initial);
-  const canEdit = currentUser?.role === 'OPERATOR' || isKabid;
+  const canEdit = currentUser?.role === 'OPERATOR' || currentUser?.role === 'ADMIN' || isKabid;
 
   const filteredPics = pics?.filter(pic => {
-    // TAHAP 2: Ibu Andreanne selalu muncul di kategori manapun
     if (pic.initial === 'ABC') return true;
-    
     if (editForm.category === 'P3') return p3Initials.includes(pic.initial);
     if (editForm.category === 'Pembayaran') return pembayaranInitials.includes(pic.initial);
     if (editForm.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial);
@@ -217,7 +215,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
           <ArrowLeft size={16} /> Kembali ke Daftar
         </button>
         
-        {/* FIX: Ubah jadi canEdit biar Kepala Bidang juga lihat tombol ini */}
         {canEdit && (
           <button onClick={() => setIsEditOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:shadow-md hover:border-indigo-200 hover:text-indigo-600 transition-all text-sm">
             <Edit size={16} /> Edit Tiket
@@ -301,7 +298,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
               <p className="font-bold text-slate-800">{ticket?.pic?.name || 'Belum di-assign'}</p>
             </div>
             
-            {/* --- TAMBAHIN BLOK INI BRO --- */}
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Waktu Diterima (Masuk Sistem)</p>
               <p className="font-bold text-indigo-600 flex items-center gap-1.5">
@@ -309,7 +305,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                 {ticket?.createdAt ? new Date(ticket.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB' : '-'}
               </p>
             </div>
-            {/* ----------------------------- */}
 
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Cabang / Unit</p>
@@ -359,7 +354,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
             </div>
           </div>
 
-         {/* FIX: Ubah jadi canEdit biar Kepala Bidang bisa bantu ngatur status kerja kalau diperlukan */}
          {ticket?.status !== 'DONE' && (currentUser?.id === ticket?.picId || canEdit) && (
             <div className="bg-slate-50 p-4 rounded-[24px] border border-slate-200/60 shadow-inner flex flex-col gap-3">
               {ticket?.status === 'OPEN' && (

@@ -55,8 +55,9 @@ export default async function DashboardPage() {
     include: { tasks: true }
   });
 
-  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL'];
-  const pembayaranInitials = ['RIN', 'ETK', 'RKS', 'RLY'];
+  // UBAH: Tambah 'SEM' ke P3, Hapus 'RLY' dari Pembayaran (otomatis masuk Lainnya)
+  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM'];
+  const pembayaranInitials = ['RIN', 'ETK', 'RKS'];
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
   const picWorkload = {
@@ -122,7 +123,6 @@ export default async function DashboardPage() {
   const urgentTicket = formattedActiveSla.length > 0 ? formattedActiveSla[0] : null;
   const criticalTickets = formattedActiveSla.filter(t => t.sla >= 80);
 
-  // 4. LIVE PROGRESS BOARD (Hanya IN_PROGRESS)
   const recentData = await db.ticket.findMany({
     where: { ...whereBase, status: 'IN_PROGRESS' }, 
     orderBy: { createdAt: 'desc' },
@@ -131,7 +131,6 @@ export default async function DashboardPage() {
   });
   const recentTickets = recentData.map(formatTicketData);
 
-  // 5. TIKET MASUK TERBARU (Ambil 10 tiket)
   const latestTicketsData = await db.ticket.findMany({
     where: whereBase,
     orderBy: { createdAt: 'desc' },
@@ -139,7 +138,7 @@ export default async function DashboardPage() {
     include: { pic: true }
   });
   const latestTickets = latestTicketsData.map(formatTicketData);
-  const newestTicket = latestTickets.length > 0 ? latestTickets[0] : null; // <-- TIKET PALING BARU
+  const newestTicket = latestTickets.length > 0 ? latestTickets[0] : null;
 
   return (
     <DashboardClient 
@@ -155,7 +154,7 @@ export default async function DashboardPage() {
       urgentTicket={urgentTicket} 
       criticalTickets={criticalTickets} 
       latestTickets={latestTickets} 
-      newestTicket={newestTicket} // <-- PASSING TIKET TERBARU
+      newestTicket={newestTicket}
     />
   );
 }
