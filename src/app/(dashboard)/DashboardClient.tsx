@@ -3,7 +3,8 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight } from "lucide-react"; 
+import { useRouter } from "next/navigation"; // <-- TAMBAHAN ROUTER
+import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"; // <-- TAMBAHAN ICON ExternalLink
 
 interface PICWorkloadData { name: string; initial: string; activeTasks: number; completed: number; }
 interface PICWorkloadGroup { P3: PICWorkloadData[]; Pengadaan: PICWorkloadData[]; Pembayaran: PICWorkloadData[]; Lainnya: PICWorkloadData[]; }
@@ -20,6 +21,8 @@ export default function DashboardClient({
   totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; userRole: string; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
   criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null;
 }) {
+  const router = useRouter(); // <-- INISIALISASI ROUTER
+
   const safeTotal = totalRequest === 0 ? 1 : totalRequest;
   const donePercentage = totalRequest === 0 ? 0 : Math.round((completed / safeTotal) * 100);
   const progressPercentage = totalRequest === 0 ? 0 : Math.round((onProgress / safeTotal) * 100);
@@ -30,7 +33,7 @@ export default function DashboardClient({
   const doneStroke = (donePercentage / 100) * circumference;
 
   const [selectedUrgentTicket, setSelectedUrgentTicket] = useState<TicketData | null>(null);
-  const [activeContextList, setActiveContextList] = useState<TicketData[]>([]); // <-- Nyimpan array list mana yg lagi dibuka
+  const [activeContextList, setActiveContextList] = useState<TicketData[]>([]);
 
   const [showCriticalList, setShowCriticalList] = useState(false); 
   const [showLatestList, setShowLatestList] = useState(false);
@@ -94,7 +97,6 @@ export default function DashboardClient({
     );
   };
 
-  // Logic Navigasi Next/Prev di popup Detail
   const currentIndex = selectedUrgentTicket ? activeContextList.findIndex(t => t.id === selectedUrgentTicket.id) : -1;
   const hasNext = currentIndex >= 0 && currentIndex < activeContextList.length - 1;
   const hasPrev = currentIndex > 0;
@@ -153,7 +155,6 @@ export default function DashboardClient({
       <div className="w-full">
         <h3 className="text-sm font-bold text-slate-800 mb-3 md:hidden">Live Progress Board</h3>
         
-        {/* Mobile View */}
         <div className="md:hidden flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-1">
           {recentTickets.map((ticket, idx) => (
             <div key={idx} onClick={() => { setSelectedUrgentTicket(ticket); setActiveContextList(recentTickets); }} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4 cursor-pointer active:scale-95 transition-all hover:border-indigo-200">
@@ -175,7 +176,6 @@ export default function DashboardClient({
           {recentTickets.length === 0 && <div className="text-center p-6 text-slate-400 font-medium text-xs border border-dashed rounded-xl">Belum ada tugas aktif</div>}
         </div>
 
-        {/* Desktop View */}
         <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
           <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-widest flex items-center gap-2"><Clock size={14} className="text-amber-500" /> Live Progress Board (Sedang Dikerjakan)</h3>
@@ -229,10 +229,9 @@ export default function DashboardClient({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* --- KOLOM KIRI (SLA Kritis + Tiket Terbaru) --- */}
         <div className="flex flex-col gap-4">
           
-          {/* CARD SLA KRITIS (Warna Merah) */}
+          {/* CARD SLA KRITIS */}
           <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-sm flex flex-col min-h-[220px] relative">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500 rounded-l-2xl"></div>
             <div className="flex items-center justify-between mb-3 pl-2">
@@ -283,7 +282,7 @@ export default function DashboardClient({
             )}
           </div>
 
-          {/* --- KARTU TIKET TERBARU (Warna Biru) --- */}
+          {/* KARTU TIKET TERBARU */}
           <div className="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm flex flex-col min-h-[220px] relative">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 rounded-l-2xl"></div>
             <div className="flex items-center justify-between mb-3 pl-2">
@@ -333,10 +332,8 @@ export default function DashboardClient({
               </div>
             )}
           </div>
-
         </div>
 
-        {/* --- KOLOM KANAN (Completion Tracking) --- */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[300px]">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Completion Tracking</h3>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-8 flex-1">
@@ -374,7 +371,7 @@ export default function DashboardClient({
         </details>
       )}
 
-      {/* --- MODAL 1: DAFTAR SEMUA TIKET KRITIS --- */}
+      {/* MODAL 1: DAFTAR SEMUA TIKET KRITIS */}
       <AnimatePresence>
         {showCriticalList && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -403,7 +400,7 @@ export default function DashboardClient({
         )}
       </AnimatePresence>
 
-      {/* --- MODAL 2: DAFTAR SEMUA TIKET TERBARU --- */}
+      {/* MODAL 2: DAFTAR SEMUA TIKET TERBARU */}
       <AnimatePresence>
         {showLatestList && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -435,7 +432,7 @@ export default function DashboardClient({
         )}
       </AnimatePresence>
 
-      {/* --- MODAL 3: DETAIL TIKET & FOLLOW UP DENGAN NEXT/PREV --- */}
+      {/* MODAL 3: DETAIL TIKET & FOLLOW UP DENGAN REDIRECT KE DETAIL */}
       <AnimatePresence>
         {selectedUrgentTicket && !showCriticalList && !showLatestList && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -449,7 +446,6 @@ export default function DashboardClient({
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  {/* NEXT PREV BUTTONS */}
                   <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
                     <button 
                       onClick={() => hasPrev && setSelectedUrgentTicket(activeContextList[currentIndex - 1])}
@@ -467,7 +463,6 @@ export default function DashboardClient({
                       <ChevronRight size={16}/>
                     </button>
                   </div>
-
                   <button onClick={() => setSelectedUrgentTicket(null)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={20}/></button>
                 </div>
               </div>
@@ -502,16 +497,15 @@ export default function DashboardClient({
                       </div>
                   </div>
 
+                  {/* TAMBAHAN BARU: TOMBOL REDIRECT LANGSUNG KE HALAMAN TIKET UNTUK DIPROSES */}
                   <div className="pt-4 border-t border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tindakan Cepat (Follow Up PIC)</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => handleFollowUpWA(selectedUrgentTicket)} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-xl hover:bg-emerald-100 hover:shadow-sm transition-all text-xs">
-                        <MessageCircle size={14} /> WhatsApp PIC
-                      </button>
-                      <button onClick={() => handleFollowUpTeams(selectedUrgentTicket)} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200 text-blue-700 font-bold rounded-xl hover:bg-blue-100 hover:shadow-sm transition-all text-xs">
-                        <Mail size={14} /> Teams PIC
-                      </button>
-                    </div>
+                    <button 
+                      onClick={() => router.push(`/tickets/${selectedUrgentTicket.id}`)}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-black rounded-xl hover:shadow-lg hover:from-indigo-700 hover:to-indigo-800 transition-all text-sm"
+                    >
+                      Buka Detail Lengkap & Proses <ExternalLink size={16} />
+                    </button>
+                    <p className="text-[10px] text-center text-slate-400 mt-2 font-medium">Klik untuk masuk ke halaman pengerjaan / update tiket.</p>
                   </div>
               </div>
             </motion.div>
