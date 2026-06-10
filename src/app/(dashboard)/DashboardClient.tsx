@@ -3,8 +3,8 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation"; // <-- TAMBAHAN ROUTER
-import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"; // <-- TAMBAHAN ICON ExternalLink
+import { useRouter } from "next/navigation"; 
+import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"; 
 
 interface PICWorkloadData { name: string; initial: string; activeTasks: number; completed: number; }
 interface PICWorkloadGroup { P3: PICWorkloadData[]; Pengadaan: PICWorkloadData[]; Pembayaran: PICWorkloadData[]; Lainnya: PICWorkloadData[]; }
@@ -21,7 +21,7 @@ export default function DashboardClient({
   totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; userRole: string; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
   criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null;
 }) {
-  const router = useRouter(); // <-- INISIALISASI ROUTER
+  const router = useRouter(); 
 
   const safeTotal = totalRequest === 0 ? 1 : totalRequest;
   const donePercentage = totalRequest === 0 ? 0 : Math.round((completed / safeTotal) * 100);
@@ -432,7 +432,7 @@ export default function DashboardClient({
         )}
       </AnimatePresence>
 
-      {/* MODAL 3: DETAIL TIKET & FOLLOW UP DENGAN REDIRECT KE DETAIL */}
+      {/* MODAL 3: DETAIL TIKET & ACTIONS DENGAN FILTERING ROLE */}
       <AnimatePresence>
         {selectedUrgentTicket && !showCriticalList && !showLatestList && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -497,16 +497,40 @@ export default function DashboardClient({
                       </div>
                   </div>
 
-                  {/* TAMBAHAN BARU: TOMBOL REDIRECT LANGSUNG KE HALAMAN TIKET UNTUK DIPROSES */}
-                  <div className="pt-4 border-t border-slate-100">
-                    <button 
-                      onClick={() => router.push(`/tickets/${selectedUrgentTicket.id}`)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-black rounded-xl hover:shadow-lg hover:from-indigo-700 hover:to-indigo-800 transition-all text-sm"
-                    >
-                      Buka Detail Lengkap & Proses <ExternalLink size={16} />
-                    </button>
-                    <p className="text-[10px] text-center text-slate-400 mt-2 font-medium">Klik untuk masuk ke halaman pengerjaan / update tiket.</p>
-                  </div>
+                  {/* CONDITIONAL RENDERING UTAMA BERDASARKAN ROLE */}
+                  {/* JIKA ROLE BUKAN PIC_LOGISTIK (ADMIN / OPERATOR / KABID) */}
+                  {userRole !== 'PIC_LOGISTIK' && (
+                    <div className="pt-4 border-t border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tindakan Cepat (Follow Up PIC)</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button onClick={() => handleFollowUpWA(selectedUrgentTicket)} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-xl hover:bg-emerald-100 hover:shadow-sm transition-all text-xs">
+                          <MessageCircle size={14} /> WhatsApp PIC
+                        </button>
+                        <button onClick={{ () => handleFollowUpTeams(selectedUrgentTicket) }} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200 text-blue-700 font-bold rounded-xl hover:bg-blue-100 hover:shadow-sm transition-all text-xs">
+                          <Mail size={14} /> Teams PIC
+                        </button>
+                      </div>
+                      <button 
+                        onClick={() => router.push(`/tickets/${selectedUrgentTicket.id}`)}
+                        className="w-full mt-3 flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all text-xs border border-slate-200"
+                      >
+                        Lihat Detail Tiket <ExternalLink size={12} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* JIKA ROLE ADALAH PIC_LOGISTIK */}
+                  {userRole === 'PIC_LOGISTIK' && (
+                    <div className="pt-4 border-t border-slate-100">
+                      <button 
+                        onClick={() => router.push(`/tickets/${selectedUrgentTicket.id}`)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-black rounded-xl hover:shadow-lg hover:from-indigo-700 hover:to-indigo-800 transition-all text-sm"
+                      >
+                        Buka Detail Lengkap & Proses <ExternalLink size={16} />
+                      </button>
+                      <p className="text-[10px] text-center text-slate-400 mt-2 font-medium">Klik untuk masuk ke halaman pengerjaan / update tiket.</p>
+                    </div>
+                  )}
               </div>
             </motion.div>
           </div>
