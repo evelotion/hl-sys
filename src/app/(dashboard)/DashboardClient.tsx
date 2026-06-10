@@ -506,7 +506,7 @@ export default function DashboardClient({
                         <button onClick={() => handleFollowUpWA(selectedUrgentTicket)} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-xl hover:bg-emerald-100 hover:shadow-sm transition-all text-xs">
                           <MessageCircle size={14} /> WhatsApp PIC
                         </button>
-                        <button onClick={{ () => handleFollowUpTeams(selectedUrgentTicket) }} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200 text-blue-700 font-bold rounded-xl hover:bg-blue-100 hover:shadow-sm transition-all text-xs">
+                        <button onClick={() => handleFollowUpTeams(selectedUrgentTicket)} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200 text-blue-700 font-bold rounded-xl hover:bg-blue-100 hover:shadow-sm transition-all text-xs">
                           <Mail size={14} /> Teams PIC
                         </button>
                       </div>
