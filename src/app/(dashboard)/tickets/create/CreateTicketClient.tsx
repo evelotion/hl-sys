@@ -15,6 +15,13 @@ interface PIC {
   email?: string | null;
 }
 
+// FUNGSI HELPER UNTUK MENGUBAH TEKS MENJADI TITLE CASE (Besar di Awal Kata)
+const toTitleCase = (str: string) => {
+  return str.replace(/\w\S*/g, function(txt) {
+    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+  });
+};
+
 export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -94,7 +101,8 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const titleReal = formData.title.trim();
+    // TERAPKAN FUNGSI TITLE CASE SEBELUM DATA DIPROSES
+    const titleReal = toTitleCase(formData.title.trim());
     const descReal = formData.description.trim();
 
     if (titleReal.length < 5) {
@@ -119,7 +127,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
     try {
       const finalPayload = {
         ...formData,
-        title: titleReal,
+        title: titleReal, // Akan tersimpan di database dengan format Title Case
         description: descReal
       };
 
@@ -144,7 +152,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
 
           const teamsText = `🚨 TUGAS BARU HL-SYS 🚨\n\nHalo ${selectedPic.name}, ada request logistik baru yang masuk dan di-assign ke kamu nih:\n\nNo. Tiket: ${ticketNum}\nPrioritas SLA: ${formData.priority}\nKategori: ${formData.category}\nCabang/Unit: ${formData.branchName}\nPemohon: ${formData.requesterName}\nPerihal: ${titleReal}\n\nSegera cek detail pekerjaan dan klik mulai proses melalui link berikut:\n${loginLink}\n\nSemangat! 💪`;
 
-          const emailSubject = `[${formData.priority}] Konfirmasi Tiket Layanan Logistik: ${ticketNum} - ${titleReal}`;
+          const emailSubject = `Ticketing Logistik: [${formData.priority}] Konfirmasi Tiket ${ticketNum} - ${titleReal}`;
           const emailBody = `Yth. Bapak/Ibu ${formData.requesterName},\n\nTerima kasih telah menghubungi Layanan Hotline Logistik BCA Syariah.\n\nBerikut adalah ringkasan tiket Anda yang telah kami terima dan masuk ke dalam antrean pengerjaan tim kami:\n\n- No. Tiket: ${ticketNum}\n- Prioritas: ${formData.priority}\n- Kategori: ${formData.category}\n- Cabang/Unit: ${formData.branchName}\n- Perihal: ${titleReal}\n- Deskripsi: ${descReal}\n- PIC Bertugas: ${selectedPic.name}\n\nKami akan segera menindaklanjuti permintaan ini sesuai dengan SLA yang berlaku. Apabila ada informasi tambahan, PIC kami akan menghubungi Anda kembali.\n\nSalam,\nDepartemen Logistik BCA Syariah`;
           
           const methods = formData.notificationMethods;

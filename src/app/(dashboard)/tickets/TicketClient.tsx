@@ -27,16 +27,12 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
-  // --- STATE SORTING BARU ---
   const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
-  
-  // --- STATE PAGINATION BARU ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; 
 
   const router = useRouter();
 
-  // --- FUNGSI KLIK HEADER UNTUK SORTING ---
   const handleSort = (key: string) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -48,23 +44,19 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
   const processedTickets = useMemo(() => {
     let result = initialTickets;
     
-    // Filter by Search Text
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(t => t.title.toLowerCase().includes(q) || t.cabang.toLowerCase().includes(q) || t.pic.toLowerCase().includes(q) || t.ticketNumber.toLowerCase().includes(q));
     }
     
-    // Filter by Status
     if (statusFilter !== 'ALL') {
       result = result.filter(t => t.status === statusFilter);
     }
 
-    // Filter by Kategori
     if (categoryFilter !== 'ALL') {
       result = result.filter(t => t.category === categoryFilter);
     }
 
-    // Sort by Kolom Dinamis
     result = [...result].sort((a, b) => {
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
@@ -83,12 +75,10 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
     return result;
   }, [initialTickets, search, statusFilter, categoryFilter, sortConfig]);
 
-  // Reset ke halaman 1 kalau user ganti filter, sort, atau ngetik pencarian
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter, categoryFilter, sortConfig]);
 
-  // Hitung total halaman & potong data sesuai halaman saat ini
   const totalPages = Math.ceil(processedTickets.length / itemsPerPage);
   const paginatedTickets = processedTickets.slice(
     (currentPage - 1) * itemsPerPage,
@@ -104,7 +94,6 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
     }
   };
 
-  // --- FUNGSI BARU UNTUK BADGE PRIORITAS ---
   const getPriorityBadge = (priority: string) => {
     if (priority === 'URGENT') return <span className="inline-flex items-center px-2 py-0.5 bg-red-50 text-red-600 rounded text-[9px] font-black border border-red-100 shadow-sm tracking-wider">🚨 URGENT</span>;
     if (priority === 'LOW') return <span className="inline-flex items-center px-2 py-0.5 bg-slate-50 text-slate-500 rounded text-[9px] font-black border border-slate-200 shadow-sm tracking-wider">🟢 LOW</span>;
@@ -130,7 +119,6 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
         )}
       </div>
 
-      {/* Filter Bar */}
       <motion.div 
         initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
         className="bg-white p-2.5 rounded-[24px] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-3 items-center justify-between"
@@ -191,10 +179,10 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-[10px] font-black text-indigo-600">{ticket.ticketNumber}</p>
-                      {/* PENAMBAHAN BADGE PRIORITAS DI MOBILE */}
                       {getPriorityBadge(ticket.priority)}
                     </div>
-                    <h3 className="text-sm font-bold text-slate-800 line-clamp-2 leading-tight">{ticket.title}</h3>
+                    {/* CSS UPPERCASE DITAMBAHKAN DI SINI UNTUK MOBILE */}
+                    <h3 className="text-sm font-bold text-slate-800 line-clamp-2 leading-tight uppercase">{ticket.title}</h3>
                   </div>
                   <div className="shrink-0">{getStatusBadge(ticket.status)}</div>
                 </div>
@@ -214,13 +202,11 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
         <div className="hidden md:block bg-white rounded-[24px] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden mt-2">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[800px]">
-              
-              {/* HEADER TABEL SORTABLE */}
               <thead>
                 <tr className="bg-slate-50/40 border-b border-slate-200/40">
                   {[
                     { label: 'ID Tiket', key: 'ticketNumber' },
-                    { label: 'Prioritas', key: 'priority' }, // <-- PENAMBAHAN KOLOM HEADER
+                    { label: 'Prioritas', key: 'priority' }, 
                     { label: 'Kategori', key: 'category' },
                     { label: 'Detail Masalah', key: 'title' },
                     { label: 'Cabang', key: 'cabang' },
@@ -257,17 +243,15 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
                       className="border-b border-slate-100/50 hover:bg-slate-50/50 hover:shadow-[0_4px_15px_rgb(0,0,0,0.02)] transition-all duration-200 cursor-pointer group"
                     >
                       <td className="px-6 py-4 font-semibold text-indigo-600 text-xs whitespace-nowrap">{ticket.ticketNumber}</td>
-                      
-                      {/* PENAMBAHAN KOLOM BADGE PRIORITAS DI DESKTOP */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getPriorityBadge(ticket.priority)}
                       </td>
-
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-slate-500 rounded-md text-[10px] font-semibold border border-slate-200/60 shadow-sm whitespace-nowrap"><Tags size={10} /> {ticket.category}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-semibold text-slate-700 text-sm group-hover:text-indigo-600 transition-colors line-clamp-1">{ticket.title}</p>
+                        {/* CSS UPPERCASE DITAMBAHKAN DI SINI UNTUK DESKTOP */}
+                        <p className="font-semibold text-slate-700 text-sm group-hover:text-indigo-600 transition-colors line-clamp-1 uppercase">{ticket.title}</p>
                         <p className="text-[10px] text-slate-400 mt-0.5 font-medium">{ticket.date}</p>
                       </td>
                       <td className="px-6 py-4 text-slate-600 text-xs font-semibold whitespace-nowrap">{ticket.cabang}</td>
@@ -281,7 +265,6 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
             {paginatedTickets.length === 0 && <div className="text-center p-10 text-slate-400 font-medium text-sm">Tidak ada tiket ditemukan pada filter ini</div>}
           </div>
 
-          {/* FOOTER PAGINATION */}
           {totalPages > 1 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100/60 bg-slate-50/30">
               <span className="text-[10px] md:text-xs text-slate-500 font-semibold">
