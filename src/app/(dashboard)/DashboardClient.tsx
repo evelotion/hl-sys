@@ -1,10 +1,10 @@
 // hl-sys/src/app/(dashboard)/DashboardClient.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation"; 
-import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink, Trophy, MapPin } from "lucide-react"; 
+import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink, Trophy, MapPin, Bell } from "lucide-react"; 
 
 interface PICWorkloadData { name: string; initial: string; activeTasks: number; completed: number; }
 interface PICWorkloadGroup { P3: PICWorkloadData[]; Pengadaan: PICWorkloadData[]; Pembayaran: PICWorkloadData[]; Lainnya: PICWorkloadData[]; }
@@ -39,6 +39,26 @@ export default function DashboardClient({
 
   const [showCriticalList, setShowCriticalList] = useState(false); 
   const [showLatestList, setShowLatestList] = useState(false);
+
+  // --- STATE NOTIFIKASI ---
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch('/api/notifications')
+      .then(res => res.json())
+      .then(data => { if (data.success && data.data) setNotifications(data.data); })
+      .catch(err => console.error("Gagal ambil notifikasi:", err));
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setIsNotifOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const [greeting, setGreeting] = useState("Selamat Datang");
   useEffect(() => {
@@ -105,10 +125,63 @@ export default function DashboardClient({
 
   return (
     <div className="space-y-6 pb-10">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">{greeting}, <span className="text-indigo-600">{firstName}</span>!</h1>
-        <p className="text-slate-500 mt-1 font-medium text-xs md:text-sm">Berikut adalah ringkasan performa sistem logistik hari ini.</p>
-      </motion.div>
+      
+      {/* HEADER WITH NOTIFICATION BELL */}
+      <div className="flex justify-between items-start mb-6 md:mb-8 relative z-40">
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">{greeting}, <span className="text-indigo-600">{firstName}</span>!</h1>
+          <p className="text-slate-500 mt-1 font-medium text-xs md:text-sm">Berikut adalah ringkasan performa sistem logistik hari ini.</p>
+        </motion.div>
+
+        <div className="relative" ref={notifRef}>
+          <button 
+            onClick={() => setIsNotifOpen(!isNotifOpen)} 
+            className={`p-3 rounded-full border transition-all shadow-sm relative flex items-center justify-center ${isNotifOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}
+          >
+            <Bell size={20} />
+            {notifications.length > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}
+          </button>
+          
+          <AnimatePresence>
+            {isNotifOpen && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} transition={{ duration: 0.2 }}
+                className="absolute top-full right-0 mt-3 w-80 sm:w-96 bg-white border border-slate-200/60 shadow-[0_15px_50px_rgb(0,0,0,0.12)] rounded-2xl overflow-hidden origin-top-right flex flex-col"
+              >
+                <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-100 flex justify-between items-center shrink-0">
+                  <span className="text-sm font-black text-slate-800 uppercase tracking-wide">Notifikasi Terbaru</span>
+                  {notifications.length > 0 && <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-md">{notifications.length} Info</span>}
+                </div>
+                <div className="overflow-y-auto max-h-[400px] custom-scrollbar p-3 flex-1 space-y-2">
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 text-sm font-medium">Belum ada aktivitas terbaru.</div>
+                  ) : (
+                    notifications.map(notif => (
+                      <div 
+                        key={notif.id} 
+                        onClick={() => {
+                          setIsNotifOpen(false);
+                          if(notif.ticket?.id) router.push(`/tickets/${notif.ticket.id}`);
+                        }}
+                        className="p-4 bg-white hover:bg-slate-50 border border-slate-100 hover:border-slate-200 shadow-sm rounded-xl cursor-pointer transition-all flex gap-4 group"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 font-black text-xs border border-indigo-100">
+                          {notif.user?.initial || 'SYS'}
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-indigo-600 mb-1 group-hover:text-indigo-700 transition-colors">{notif.ticket?.ticketNumber || 'Tugas Dihapus'}</p>
+                          <p className="text-sm text-slate-600 leading-snug"><span className="font-bold text-slate-800">{notif.user?.name || 'Sistem'}</span> {notif.message}</p>
+                          <p className="text-[10px] font-bold text-slate-400 mt-2 flex items-center gap-1"><Clock size={10}/> {new Date(notif.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
@@ -356,7 +429,6 @@ export default function DashboardClient({
         </div>
       </div>
 
-      {/* --- LEADERBOARD SECTION --- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-2">
         <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm flex flex-col relative overflow-hidden">
           <div className="absolute -right-6 -top-6 text-amber-50/50 rotate-12 pointer-events-none">
@@ -483,7 +555,7 @@ export default function DashboardClient({
         )}
       </AnimatePresence>
 
-      {/* MODAL 3: DETAIL TIKET & ACTIONS */}
+      {/* MODAL 3: DETAIL TIKET & ACTIONS DENGAN FILTERING ROLE */}
       <AnimatePresence>
         {selectedUrgentTicket && !showCriticalList && !showLatestList && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -548,6 +620,7 @@ export default function DashboardClient({
                       </div>
                   </div>
 
+                  {/* JIKA ROLE BUKAN PIC_LOGISTIK (ADMIN / OPERATOR / KABID) */}
                   {userRole !== 'PIC_LOGISTIK' && (
                     <div className="pt-4 border-t border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tindakan Cepat (Follow Up PIC)</p>
@@ -568,6 +641,7 @@ export default function DashboardClient({
                     </div>
                   )}
 
+                  {/* JIKA ROLE ADALAH PIC_LOGISTIK */}
                   {userRole === 'PIC_LOGISTIK' && (
                     <div className="pt-4 border-t border-slate-100">
                       <button 
