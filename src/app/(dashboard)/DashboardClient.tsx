@@ -40,15 +40,28 @@ export default function DashboardClient({
   const [showCriticalList, setShowCriticalList] = useState(false); 
   const [showLatestList, setShowLatestList] = useState(false);
 
-  // --- STATE NOTIFIKASI ---
+  // --- STATE NOTIFIKASI & LOGIC UNREAD ---
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false); // State untuk titik merah
   const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/api/notifications')
       .then(res => res.json())
-      .then(data => { if (data.success && data.data) setNotifications(data.data); })
+      .then(data => { 
+        if (data.success && data.data && data.data.length > 0) { 
+          setNotifications(data.data);
+          
+          // Cek ID notifikasi terbaru vs yang terakhir dilihat di browser
+          const newestNotifId = data.data[0].id;
+          const lastSeenNotifId = localStorage.getItem('last_seen_notif_id');
+          
+          if (newestNotifId !== lastSeenNotifId) {
+            setHasUnread(true); // Nyalakan lampu merah jika ada yang baru
+          }
+        } 
+      })
       .catch(err => console.error("Gagal ambil notifikasi:", err));
   }, []);
 
@@ -59,6 +72,17 @@ export default function DashboardClient({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // FUNGSI HANDLE KLIK LONCENG
+  const handleToggleNotif = () => {
+    setIsNotifOpen(!isNotifOpen);
+    
+    // Jika dropdown dibuka dan ada notifikasi, matikan titik merah & simpan ID ke memori browser
+    if (!isNotifOpen && notifications.length > 0) {
+      setHasUnread(false);
+      localStorage.setItem('last_seen_notif_id', notifications[0].id);
+    }
+  };
 
   const [greeting, setGreeting] = useState("Selamat Datang");
   useEffect(() => {
@@ -135,11 +159,11 @@ export default function DashboardClient({
 
         <div className="relative" ref={notifRef}>
           <button 
-            onClick={() => setIsNotifOpen(!isNotifOpen)} 
+            onClick={handleToggleNotif} 
             className={`p-3 rounded-full border transition-all shadow-sm relative flex items-center justify-center ${isNotifOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}
           >
             <Bell size={20} />
-            {notifications.length > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}
+            {hasUnread && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}
           </button>
           
           <AnimatePresence>
@@ -429,6 +453,7 @@ export default function DashboardClient({
         </div>
       </div>
 
+      {/* --- LEADERBOARD SECTION --- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-2">
         <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm flex flex-col relative overflow-hidden">
           <div className="absolute -right-6 -top-6 text-amber-50/50 rotate-12 pointer-events-none">
@@ -620,7 +645,6 @@ export default function DashboardClient({
                       </div>
                   </div>
 
-                  {/* JIKA ROLE BUKAN PIC_LOGISTIK (ADMIN / OPERATOR / KABID) */}
                   {userRole !== 'PIC_LOGISTIK' && (
                     <div className="pt-4 border-t border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tindakan Cepat (Follow Up PIC)</p>
@@ -641,7 +665,6 @@ export default function DashboardClient({
                     </div>
                   )}
 
-                  {/* JIKA ROLE ADALAH PIC_LOGISTIK */}
                   {userRole === 'PIC_LOGISTIK' && (
                     <div className="pt-4 border-t border-slate-100">
                       <button 
