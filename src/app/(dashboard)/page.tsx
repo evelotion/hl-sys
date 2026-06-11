@@ -55,7 +55,6 @@ export default async function DashboardPage() {
     include: { tasks: true }
   });
 
-  // UBAH: Tambah 'SEM' ke P3, Hapus 'RLY' dari Pembayaran (otomatis masuk Lainnya)
   const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM'];
   const pembayaranInitials = ['RIN', 'ETK', 'RKS'];
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
@@ -140,6 +139,25 @@ export default async function DashboardPage() {
   const latestTickets = latestTicketsData.map(formatTicketData);
   const newestTicket = latestTickets.length > 0 ? latestTickets[0] : null;
 
+  // 5. LEADERBOARD DATA (Top 5 Cabang & Top 5 Requester)
+  const topBranchesData = await db.ticket.groupBy({
+    by: ['branchName'],
+    where: whereBase,
+    _count: { id: true },
+    orderBy: { _count: { id: 'desc' } },
+    take: 5
+  });
+  const topBranches = topBranchesData.map(b => ({ name: b.branchName || 'Tidak Diketahui', count: b._count.id }));
+
+  const topRequestersData = await db.ticket.groupBy({
+    by: ['requesterName'],
+    where: whereBase,
+    _count: { id: true },
+    orderBy: { _count: { id: 'desc' } },
+    take: 5
+  });
+  const topRequesters = topRequestersData.map(r => ({ name: r.requesterName || 'Tidak Diketahui', count: r._count.id }));
+
   return (
     <DashboardClient 
       totalRequest={totalRequest}
@@ -155,6 +173,8 @@ export default async function DashboardPage() {
       criticalTickets={criticalTickets} 
       latestTickets={latestTickets} 
       newestTicket={newestTicket}
+      topBranches={topBranches}      // <-- PASSING KE CLIENT
+      topRequesters={topRequesters}  // <-- PASSING KE CLIENT
     />
   );
 }

@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation"; 
-import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"; 
+import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink, Trophy, MapPin } from "lucide-react"; 
 
 interface PICWorkloadData { name: string; initial: string; activeTasks: number; completed: number; }
 interface PICWorkloadGroup { P3: PICWorkloadData[]; Pengadaan: PICWorkloadData[]; Pembayaran: PICWorkloadData[]; Lainnya: PICWorkloadData[]; }
@@ -15,11 +15,13 @@ interface TicketData {
   title?: string; category?: string; cabang?: string; date?: string;
 }
 
+interface LeaderboardItem { name: string; count: number; }
+
 export default function DashboardClient({
-  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket
+  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket, topBranches, topRequesters
 }: {
   totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; userRole: string; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
-  criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null;
+  criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null; topBranches: LeaderboardItem[]; topRequesters: LeaderboardItem[];
 }) {
   const router = useRouter(); 
 
@@ -231,7 +233,6 @@ export default function DashboardClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="flex flex-col gap-4">
           
-          {/* CARD SLA KRITIS */}
           <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-sm flex flex-col min-h-[220px] relative">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500 rounded-l-2xl"></div>
             <div className="flex items-center justify-between mb-3 pl-2">
@@ -282,7 +283,6 @@ export default function DashboardClient({
             )}
           </div>
 
-          {/* KARTU TIKET TERBARU */}
           <div className="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm flex flex-col min-h-[220px] relative">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 rounded-l-2xl"></div>
             <div className="flex items-center justify-between mb-3 pl-2">
@@ -352,6 +352,57 @@ export default function DashboardClient({
               <div className="flex items-center justify-center sm:justify-start gap-2"><span className="w-3 h-3 rounded-full bg-amber-500"></span><span className="text-xs font-bold text-slate-600">On Progress ({progressPercentage}%)</span></div>
               <div className="flex items-center justify-center sm:justify-start gap-2"><span className="w-3 h-3 rounded-full bg-blue-500"></span><span className="text-xs font-bold text-slate-600">Request Baru ({requestPercentage}%)</span></div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* --- LEADERBOARD SECTION --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-2">
+        <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm flex flex-col relative overflow-hidden">
+          <div className="absolute -right-6 -top-6 text-amber-50/50 rotate-12 pointer-events-none">
+            <Trophy size={100} strokeWidth={3} />
+          </div>
+          <div className="flex items-center gap-2 mb-4 relative z-10">
+            <Trophy size={16} className="text-amber-500" />
+            <h3 className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Top 5 Pemohon Paling Aktif</h3>
+          </div>
+          <div className="space-y-2 relative z-10">
+            {topRequesters.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-xl border border-amber-50 hover:border-amber-200 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${idx === 0 ? 'bg-amber-400 text-white shadow-sm' : idx === 1 ? 'bg-slate-300 text-white shadow-sm' : idx === 2 ? 'bg-orange-300 text-white shadow-sm' : 'bg-slate-50 text-slate-500'}`}>
+                    {idx + 1}
+                  </div>
+                  <span className="text-xs font-bold text-slate-700 truncate max-w-[150px] sm:max-w-[200px]">{item.name}</span>
+                </div>
+                <span className="text-[10px] font-black text-amber-700 bg-amber-100 px-2 py-1 rounded-md shrink-0">{item.count} Tiket</span>
+              </div>
+            ))}
+            {topRequesters.length === 0 && <p className="text-[10px] text-slate-400 text-center py-4">Belum ada data tiket.</p>}
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-sm flex flex-col relative overflow-hidden">
+          <div className="absolute -right-6 -top-6 text-emerald-50/50 rotate-12 pointer-events-none">
+            <MapPin size={100} strokeWidth={3} />
+          </div>
+          <div className="flex items-center gap-2 mb-4 relative z-10">
+            <MapPin size={16} className="text-emerald-500" />
+            <h3 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Top 5 Cabang / Unit Teraktif</h3>
+          </div>
+          <div className="space-y-2 relative z-10">
+            {topBranches.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-xl border border-emerald-50 hover:border-emerald-200 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${idx === 0 ? 'bg-emerald-400 text-white shadow-sm' : idx === 1 ? 'bg-slate-300 text-white shadow-sm' : idx === 2 ? 'bg-orange-300 text-white shadow-sm' : 'bg-slate-50 text-slate-500'}`}>
+                    {idx + 1}
+                  </div>
+                  <span className="text-xs font-bold text-slate-700 truncate max-w-[150px] sm:max-w-[200px]">{item.name}</span>
+                </div>
+                <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md shrink-0">{item.count} Tiket</span>
+              </div>
+            ))}
+            {topBranches.length === 0 && <p className="text-[10px] text-slate-400 text-center py-4">Belum ada data tiket.</p>}
           </div>
         </div>
       </div>
@@ -432,7 +483,7 @@ export default function DashboardClient({
         )}
       </AnimatePresence>
 
-      {/* MODAL 3: DETAIL TIKET & ACTIONS DENGAN FILTERING ROLE */}
+      {/* MODAL 3: DETAIL TIKET & ACTIONS */}
       <AnimatePresence>
         {selectedUrgentTicket && !showCriticalList && !showLatestList && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -497,8 +548,6 @@ export default function DashboardClient({
                       </div>
                   </div>
 
-                  {/* CONDITIONAL RENDERING UTAMA BERDASARKAN ROLE */}
-                  {/* JIKA ROLE BUKAN PIC_LOGISTIK (ADMIN / OPERATOR / KABID) */}
                   {userRole !== 'PIC_LOGISTIK' && (
                     <div className="pt-4 border-t border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tindakan Cepat (Follow Up PIC)</p>
@@ -519,7 +568,6 @@ export default function DashboardClient({
                     </div>
                   )}
 
-                  {/* JIKA ROLE ADALAH PIC_LOGISTIK */}
                   {userRole === 'PIC_LOGISTIK' && (
                     <div className="pt-4 border-t border-slate-100">
                       <button 
