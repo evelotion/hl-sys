@@ -1,10 +1,10 @@
-// src/app/(dashboard)/SidebarNav.tsx
+// hl-sys/src/app/(dashboard)/SidebarNav.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Ticket, Package, LogOut, Loader2, Users, FileSpreadsheet, ChevronUp, ChevronDown, Lock, Eye, EyeOff, X } from 'lucide-react';
+import { LayoutDashboard, Ticket, Package, LogOut, Loader2, Users, FileSpreadsheet, ChevronUp, ChevronDown, Lock, Eye, EyeOff, X, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion'; 
 import toast from 'react-hot-toast';
 
@@ -13,27 +13,45 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  // State untuk Dropdown Profil
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileDropdownOpen, setIsMobileDropdownOpen] = useState(false);
   
-  // State untuk Modal Ganti Password
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
   const [passForm, setPassForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
-  
-  // State untuk Toggle Visibility (Mata) Password
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // --- STATE NOTIFIKASI ---
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [isNotifDesktopOpen, setIsNotifDesktopOpen] = useState(false);
+  const [isNotifMobileOpen, setIsNotifMobileOpen] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
+  const notifDesktopRef = useRef<HTMLDivElement>(null);
+  const notifMobileRef = useRef<HTMLDivElement>(null);
 
+  // Fetch Notifikasi (Akan refresh otomatis setiap ganti menu/halaman)
+  useEffect(() => {
+    fetch('/api/notifications')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          setNotifications(data.data);
+        }
+      })
+      .catch(err => console.error("Gagal ambil notifikasi:", err));
+  }, [pathname]);
+
+  // Handle Klik di luar Dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsDropdownOpen(false);
       if (mobileDropdownRef.current && !mobileDropdownRef.current.contains(event.target as Node)) setIsMobileDropdownOpen(false);
+      if (notifDesktopRef.current && !notifDesktopRef.current.contains(event.target as Node)) setIsNotifDesktopOpen(false);
+      if (notifMobileRef.current && !notifMobileRef.current.contains(event.target as Node)) setIsNotifMobileOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -77,10 +95,7 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
       const res = await fetch('/api/users/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          oldPassword: passForm.oldPassword,
-          newPassword: passForm.newPassword
-        })
+        body: JSON.stringify({ oldPassword: passForm.oldPassword, newPassword: passForm.newPassword })
       });
 
       const data = await res.json();
@@ -101,6 +116,41 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
   };
 
   const initial = userName ? userName.charAt(0).toUpperCase() : '?';
+
+  // --- KOMPONEN RENDER LIST NOTIFIKASI ---
+  const NotificationList = () => (
+    <div className="flex flex-col h-full max-h-[350px]">
+      <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-100 flex justify-between items-center shrink-0">
+        <span className="text-xs font-black text-slate-700 uppercase tracking-widest">Notifikasi Terbaru</span>
+        {notifications.length > 0 && <span className="text-[9px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-md">{notifications.length} Aktivitas</span>}
+      </div>
+      <div className="overflow-y-auto custom-scrollbar p-2 flex-1">
+        {notifications.length === 0 ? (
+          <div className="p-6 text-center text-slate-400 text-xs font-medium">Belum ada aktivitas terbaru.</div>
+        ) : (
+          notifications.map(notif => (
+            <div 
+              key={notif.id} 
+              onClick={() => {
+                setIsNotifDesktopOpen(false); setIsNotifMobileOpen(false);
+                if(notif.ticket?.id) router.push(`/tickets/${notif.ticket.id}`);
+              }}
+              className="p-3 mb-1.5 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-xl cursor-pointer transition-all flex gap-3 group"
+            >
+              <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 font-black text-[10px] border border-indigo-100">
+                {notif.user?.initial || 'SYS'}
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-indigo-600 mb-0.5 group-hover:text-indigo-700 transition-colors">{notif.ticket?.ticketNumber || 'Tugas Dihapus'}</p>
+                <p className="text-xs text-slate-600 leading-snug"><span className="font-bold text-slate-800">{notif.user?.name || 'Sistem'}</span> {notif.message}</p>
+                <p className="text-[9px] font-bold text-slate-400 mt-1">{new Date(notif.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</p>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -134,48 +184,70 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
           })}
         </nav>
 
-        {/* Profil Pengguna & Dropdown Desktop */}
-        <div className="relative p-4 border-t border-slate-100/50 shrink-0 bg-white/80" ref={dropdownRef}>
-          <AnimatePresence>
-            {isDropdownOpen && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10, scale: 0.95 }} 
-                animate={{ opacity: 1, y: 0, scale: 1 }} 
-                exit={{ opacity: 0, y: 10, scale: 0.95 }} 
-                transition={{ duration: 0.2 }}
-                className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.08)] rounded-xl p-2 z-50 flex flex-col gap-1"
-              >
-                <div className="px-3 py-2 mb-1 border-b border-slate-50">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sesi Aktif</p>
+        {/* --- BOTTOM SECTION DESKTOP (Notif + Profile) --- */}
+        <div className="p-4 border-t border-slate-100/50 shrink-0 bg-white/80 flex gap-2">
+          
+          {/* Lonceng Notif Desktop */}
+          <div className="relative" ref={notifDesktopRef}>
+            <button 
+              onClick={() => setIsNotifDesktopOpen(!isNotifDesktopOpen)} 
+              className={`p-2.5 rounded-xl border transition-colors relative flex items-center justify-center ${isNotifDesktopOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}
+            >
+              <Bell size={18} />
+              {notifications.length > 0 && <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>}
+            </button>
+            <AnimatePresence>
+              {isNotifDesktopOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.2 }}
+                  className="absolute bottom-full left-0 mb-3 w-80 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.12)] rounded-2xl z-50 overflow-hidden origin-bottom-left"
+                >
+                  <NotificationList />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Profil Dropdown Desktop */}
+          <div className="relative flex-1" ref={dropdownRef}>
+            <div 
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)} 
+              className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-colors border ${isDropdownOpen ? 'bg-slate-50 border-slate-200' : 'border-transparent hover:bg-slate-50 hover:border-slate-200'}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-sm border border-indigo-200 shrink-0">
+                  {initial}
                 </div>
-                
-                <button onClick={() => { setIsPasswordModalOpen(true); setIsDropdownOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 font-semibold hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors text-sm group">
-                  <Lock size={16} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                  <span>Ganti Password</span>
-                </button>
-
-                <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 font-semibold hover:bg-red-50 rounded-lg transition-colors group disabled:opacity-70 text-sm">
-                  {isLoggingOut ? <Loader2 size={16} className="animate-spin text-red-500" /> : <LogOut size={16} className="text-red-500 group-hover:scale-110 transition-transform" />}
-                  <span>{isLoggingOut ? 'Keluar...' : 'Keluar Sistem'}</span>
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div 
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)} 
-            className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-colors ${isDropdownOpen ? 'bg-slate-50' : 'hover:bg-slate-50'}`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-lg border border-indigo-200 shrink-0">
-                {initial}
+                <div className="overflow-hidden">
+                  <p className="text-xs font-bold text-slate-700 truncate">{userName.split(' ')[0]}</p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 truncate">{userRole?.replace('_', ' ')}</p>
+                </div>
               </div>
-              <div className="overflow-hidden">
-                <p className="text-sm font-bold text-slate-700 truncate">{userName}</p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{userRole?.replace('_', ' ')}</p>
-              </div>
+              <ChevronUp size={14} className={`text-slate-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </div>
-            <ChevronUp size={16} className={`text-slate-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+
+            <AnimatePresence>
+              {isDropdownOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.2 }}
+                  className="absolute bottom-full right-0 mb-3 w-56 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.08)] rounded-xl p-2 z-50 flex flex-col gap-1 origin-bottom-right"
+                >
+                  <div className="px-3 py-2 mb-1 border-b border-slate-50">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sesi Aktif ({userName})</p>
+                  </div>
+                  
+                  <button onClick={() => { setIsPasswordModalOpen(true); setIsDropdownOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 font-semibold hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors text-sm group">
+                    <Lock size={16} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                    <span>Ganti Password</span>
+                  </button>
+
+                  <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 font-semibold hover:bg-red-50 rounded-lg transition-colors group disabled:opacity-70 text-sm">
+                    {isLoggingOut ? <Loader2 size={16} className="animate-spin text-red-500" /> : <LogOut size={16} className="text-red-500 group-hover:scale-110 transition-transform" />}
+                    <span>{isLoggingOut ? 'Keluar...' : 'Keluar Sistem'}</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </aside>
@@ -194,39 +266,60 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
           </div>
         </div>
 
-        <div className="relative" ref={mobileDropdownRef}>
-          <div 
-            onClick={() => setIsMobileDropdownOpen(!isMobileDropdownOpen)} 
-            className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-sm border border-indigo-200 cursor-pointer shadow-sm active:scale-95 transition-transform"
-          >
-            {initial}
+        <div className="flex items-center gap-3">
+          {/* Lonceng Notif Mobile */}
+          <div className="relative" ref={notifMobileRef}>
+            <button 
+              onClick={() => setIsNotifMobileOpen(!isNotifMobileOpen)} 
+              className={`p-2 rounded-full border transition-colors relative flex items-center justify-center ${isNotifMobileOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+            >
+              <Bell size={16} />
+              {notifications.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>}
+            </button>
+            <AnimatePresence>
+              {isNotifMobileOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} transition={{ duration: 0.2 }}
+                  className="absolute top-full right-0 mt-3 w-80 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.12)] rounded-2xl z-50 overflow-hidden origin-top-right"
+                >
+                  <NotificationList />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          <AnimatePresence>
-            {isMobileDropdownOpen && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10, scale: 0.95 }} 
-                animate={{ opacity: 1, y: 0, scale: 1 }} 
-                exit={{ opacity: 0, y: -10, scale: 0.95 }} 
-                transition={{ duration: 0.2 }}
-                className="absolute top-full right-0 mt-3 w-48 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.1)] rounded-xl p-2 z-50 origin-top-right flex flex-col gap-1"
-              >
-                <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                  <p className="text-xs font-bold text-slate-700 truncate">{userName}</p>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{userRole?.replace('_', ' ')}</p>
-                </div>
-                
-                <button onClick={() => { setIsPasswordModalOpen(true); setIsMobileDropdownOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-slate-600 font-bold hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors text-xs">
-                  <Lock size={14} /> Ganti Password
-                </button>
+          {/* Profile Dropdown Mobile */}
+          <div className="relative" ref={mobileDropdownRef}>
+            <div 
+              onClick={() => setIsMobileDropdownOpen(!isMobileDropdownOpen)} 
+              className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-sm border border-indigo-200 cursor-pointer shadow-sm active:scale-95 transition-transform"
+            >
+              {initial}
+            </div>
 
-                <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-2 px-3 py-2.5 text-red-600 font-bold hover:bg-red-50 rounded-lg transition-colors text-xs disabled:opacity-70">
-                  {isLoggingOut ? <Loader2 size={14} className="animate-spin text-red-500" /> : <LogOut size={14} />}
-                  {isLoggingOut ? 'Keluar...' : 'Keluar Sistem'}
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            <AnimatePresence>
+              {isMobileDropdownOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} transition={{ duration: 0.2 }}
+                  className="absolute top-full right-0 mt-3 w-48 bg-white border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.1)] rounded-xl p-2 z-50 origin-top-right flex flex-col gap-1"
+                >
+                  <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                    <p className="text-xs font-bold text-slate-700 truncate">{userName}</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{userRole?.replace('_', ' ')}</p>
+                  </div>
+                  
+                  <button onClick={() => { setIsPasswordModalOpen(true); setIsMobileDropdownOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-slate-600 font-bold hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors text-xs">
+                    <Lock size={14} /> Ganti Password
+                  </button>
+
+                  <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-2 px-3 py-2.5 text-red-600 font-bold hover:bg-red-50 rounded-lg transition-colors text-xs disabled:opacity-70">
+                    {isLoggingOut ? <Loader2 size={14} className="animate-spin text-red-500" /> : <LogOut size={14} />}
+                    {isLoggingOut ? 'Keluar...' : 'Keluar Sistem'}
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
