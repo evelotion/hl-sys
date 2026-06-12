@@ -16,12 +16,13 @@ interface TicketData {
 }
 
 interface LeaderboardItem { name: string; count: number; }
+interface MilestoneItem { name: string; initial: string; count: number; }
 
 export default function DashboardClient({
-  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket, topBranches, topRequesters
+  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket, topBranches, topRequesters, milestones
 }: {
   totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; userRole: string; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
-  criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null; topBranches: LeaderboardItem[]; topRequesters: LeaderboardItem[];
+  criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null; topBranches: LeaderboardItem[]; topRequesters: LeaderboardItem[]; milestones: MilestoneItem[];
 }) {
   const router = useRouter(); 
 
@@ -40,11 +41,25 @@ export default function DashboardClient({
   const [showCriticalList, setShowCriticalList] = useState(false); 
   const [showLatestList, setShowLatestList] = useState(false);
 
-  // --- STATE NOTIFIKASI & LOGIC UNREAD ---
+  // --- STATE NOTIFIKASI ---
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [hasUnread, setHasUnread] = useState(false); // State untuk titik merah
+  const [hasUnread, setHasUnread] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // --- STATE MILESTONE APRESIASI ---
+  const [showMilestone, setShowMilestone] = useState(true);
+  const [currentMilestoneIdx, setCurrentMilestoneIdx] = useState(0);
+
+  // Efek Auto-Slide untuk Milestone jika ada > 1 orang
+  useEffect(() => {
+    if (milestones && milestones.length > 1 && showMilestone) {
+      const timer = setInterval(() => {
+        setCurrentMilestoneIdx((prev) => (prev + 1) % milestones.length);
+      }, 5000); // Ganti tiap 5 detik
+      return () => clearInterval(timer);
+    }
+  }, [milestones, showMilestone]);
 
   useEffect(() => {
     fetch('/api/notifications')
@@ -52,14 +67,9 @@ export default function DashboardClient({
       .then(data => { 
         if (data.success && data.data && data.data.length > 0) { 
           setNotifications(data.data);
-          
-          // Cek ID notifikasi terbaru vs yang terakhir dilihat di browser
           const newestNotifId = data.data[0].id;
           const lastSeenNotifId = localStorage.getItem('last_seen_notif_id');
-          
-          if (newestNotifId !== lastSeenNotifId) {
-            setHasUnread(true); // Nyalakan lampu merah jika ada yang baru
-          }
+          if (newestNotifId !== lastSeenNotifId) setHasUnread(true); 
         } 
       })
       .catch(err => console.error("Gagal ambil notifikasi:", err));
@@ -73,11 +83,8 @@ export default function DashboardClient({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // FUNGSI HANDLE KLIK LONCENG
   const handleToggleNotif = () => {
     setIsNotifOpen(!isNotifOpen);
-    
-    // Jika dropdown dibuka dan ada notifikasi, matikan titik merah & simpan ID ke memori browser
     if (!isNotifOpen && notifications.length > 0) {
       setHasUnread(false);
       localStorage.setItem('last_seen_notif_id', notifications[0].id);
@@ -207,6 +214,54 @@ export default function DashboardClient({
         </div>
       </div>
 
+      {/* --- BANNER APRESIASI MILESTONE --- */}
+      <AnimatePresence mode="wait">
+        {showMilestone && milestones && milestones.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            className="overflow-hidden"
+          >
+             <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_rgba(245,158,11,0.3)] relative text-white flex items-center border border-amber-400/50 overflow-hidden">
+                {/* Background Pattern */}
+                <div className="absolute right-0 top-0 opacity-10 pointer-events-none scale-150 -translate-y-4 translate-x-4">
+                   <Trophy size={150} strokeWidth={1.5} />
+                </div>
+                
+                <button onClick={() => setShowMilestone(false)} className="absolute top-3 right-3 text-white/70 hover:text-white transition-colors bg-black/10 hover:bg-black/20 p-1 rounded-full z-10">
+                  <X size={14} />
+                </button>
+
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentMilestoneIdx}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex items-center gap-4 sm:gap-5 w-full pr-6 relative z-10"
+                  >
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 rounded-full flex items-center justify-center shrink-0 border border-white/30 backdrop-blur-md shadow-inner">
+                      <Trophy size={26} className="text-amber-100 drop-shadow-md" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-0.5">
+                         <h3 className="font-black text-base sm:text-lg tracking-tight drop-shadow-sm">Apresiasi Luar Biasa! 🎉</h3>
+                         {milestones.length > 1 && <span className="bg-black/20 px-2 py-0.5 rounded-full text-[9px] font-bold">{currentMilestoneIdx + 1}/{milestones.length}</span>}
+                      </div>
+                      <p className="text-xs sm:text-sm text-amber-50 leading-snug">
+                        Selamat kepada <strong className="text-white bg-white/20 px-1.5 py-0.5 rounded-md mx-0.5 shadow-sm">{milestones[currentMilestoneIdx].name}</strong> atas dedikasinya menyelesaikan pencapaian <strong className="text-white text-sm sm:text-base border-b border-white/50">{milestones[currentMilestoneIdx].count} Tiket Logistik</strong> hari ini!
+                      </p>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* SISA DASHBOARD DI BAWAHNYA TETAP SAMA */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div className="flex items-center gap-2 text-slate-500 mb-3"><FileText size={18} className="text-indigo-500" /><span className="text-[10px] font-bold uppercase tracking-wider">Total Request</span></div>
@@ -645,6 +700,7 @@ export default function DashboardClient({
                       </div>
                   </div>
 
+                  {/* JIKA ROLE BUKAN PIC_LOGISTIK (ADMIN / OPERATOR / KABID) */}
                   {userRole !== 'PIC_LOGISTIK' && (
                     <div className="pt-4 border-t border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tindakan Cepat (Follow Up PIC)</p>
@@ -665,6 +721,7 @@ export default function DashboardClient({
                     </div>
                   )}
 
+                  {/* JIKA ROLE ADALAH PIC_LOGISTIK */}
                   {userRole === 'PIC_LOGISTIK' && (
                     <div className="pt-4 border-t border-slate-100">
                       <button 

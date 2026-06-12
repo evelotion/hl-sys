@@ -49,10 +49,10 @@ export default async function DashboardPage() {
     slaOnTimePercentage = 0;
   }
 
-  // 3. Beban Kerja PIC
+  // 3. Beban Kerja PIC & LOGIKA MILESTONE APRESIASI
   const pics = await db.user.findMany({
     where: { role: 'PIC_LOGISTIK' },
-    include: { tasks: true }
+    include: { tasks: true } // Ambil semua task untuk dihitung
   });
 
   const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM'];
@@ -66,7 +66,11 @@ export default async function DashboardPage() {
     Lainnya: [] as any[]
   };
 
+  const todayDateStr = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+  const milestones: { name: string, initial: string, count: number }[] = [];
+
   pics.forEach((pic: any) => {
+    // A. Distribusi Beban Kerja
     const activeTasks = pic.tasks.filter((t: any) => t.status !== 'DONE').length;
     const completedTasks = pic.tasks.filter((t: any) => t.status === 'DONE').length;
     const picData = { name: pic.name, initial: pic.initial, activeTasks, completed: completedTasks };
@@ -75,6 +79,33 @@ export default async function DashboardPage() {
     else if (pengadaanInitials.includes(pic.initial)) picWorkload.Pengadaan.push(picData);
     else if (pembayaranInitials.includes(pic.initial)) picWorkload.Pembayaran.push(picData);
     else picWorkload.Lainnya.push(picData);
+
+    // B. Logika Deteksi Milestone (10, 50, 100)
+    const doneTasks = pic.tasks
+      .filter((t: any) => t.status === 'DONE' && t.resolvedAt)
+      .sort((a: any, b: any) => new Date(a.resolvedAt).getTime() - new Date(b.resolvedAt).getTime());
+
+    const count = doneTasks.length;
+    
+    const checkMilestone = (target: number) => {
+      if (count >= target) {
+        const targetTask = doneTasks[target - 1]; // Task ke-target (index-0)
+        if (targetTask && targetTask.resolvedAt) {
+          const resolveDateStr = new Date(new Date(targetTask.resolvedAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+          // Jika tiket ke-target diselesaikan HARI INI
+          if (resolveDateStr === todayDateStr) {
+            milestones.push({ name: pic.name, initial: pic.initial, count: target });
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    // Cek dari milestone tertinggi, kalau dapat langsung skip biar nggak dobel
+    if (checkMilestone(100)) return;
+    if (checkMilestone(50)) return;
+    checkMilestone(10);
   });
 
   const formatTicketData = (t: any) => {
@@ -173,8 +204,9 @@ export default async function DashboardPage() {
       criticalTickets={criticalTickets} 
       latestTickets={latestTickets} 
       newestTicket={newestTicket}
-      topBranches={topBranches}      // <-- PASSING KE CLIENT
-      topRequesters={topRequesters}  // <-- PASSING KE CLIENT
+      topBranches={topBranches}
+      topRequesters={topRequesters}
+      milestones={milestones} // <-- PASSING DATA APRESIASI KE CLIENT
     />
   );
 }
