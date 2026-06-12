@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Paksa warna dasar default ke Light Mode (slate-50 & slate-900) */
+  --background: #f8fafc; 
+  --foreground: #0f172a;
+  
+  /* Blokir total paksaan dark mode dari browser browser cerdas */
+  color-scheme: light only !important;
 }
 
 @theme inline {
@@ -12,12 +16,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* KODE @media (prefers-color-scheme: dark) SUDAH DIHAPUS DARI SINI
+  BIAR WARNA ENGGAK BLANK / INVISIBLE PAS BOS BUKA DALAM MODE GELAP
+*/
 
 body {
   background: var(--background);
