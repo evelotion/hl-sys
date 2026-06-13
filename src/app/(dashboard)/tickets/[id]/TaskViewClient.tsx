@@ -4,9 +4,15 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Save, Loader2, X, Calendar, Clock, CheckCircle2, AlertCircle, UploadCloud, Trash2, MessageCircle, Mail, Send, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Edit, Save, Loader2, X, Calendar, Clock, CheckCircle2, AlertCircle, Trash2, MessageCircle, Mail, Send, ArrowRight, Link as LinkIcon, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
-import imageCompression from 'browser-image-compression'; 
+
+// FUNGSI HELPER UNTUK MENGUBAH TEKS MENJADI TITLE CASE
+const toTitleCase = (str: string) => {
+  return str.replace(/\w\S*/g, function(txt) {
+    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+  });
+};
 
 export default function TaskViewClient({ initialTicket, pics, currentUser }: { initialTicket: any, pics: any[], currentUser: any }) {
   const router = useRouter();
@@ -15,7 +21,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [isUploading, setIsUploading] = useState(false); 
   
   const [comment, setComment] = useState('');
   const [isCommenting, setIsCommenting] = useState(false);
@@ -50,38 +55,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     if (editForm.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial);
     return false;
   }) || [];
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    try {
-      const options = { maxSizeMB: 1, maxWidthOrHeight: 1024, useWebWorker: true };
-      const compressedFile = await imageCompression(file, options);
-      
-      const uploadData = new FormData();
-      uploadData.append('file', compressedFile);
-
-      const res = await fetch('/api/upload', { 
-        method: 'POST', 
-        body: uploadData 
-      });
-      
-      const data = await res.json();
-      
-      if (data.success && data.url) {
-        setEditForm({ ...editForm, issueImgUrl: data.url });
-        toast.success("Gambar berhasil diunggah!");
-      } else {
-        toast.error("Gagal mengunggah file. Ditolak server.");
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-      toast.error("Terjadi kesalahan jaringan saat mengunggah file.");
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,11 +100,14 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    
+    const titleReal = toTitleCase(editForm.title.trim());
+    
     try {
       const res = await fetch(`/api/tickets/${ticket.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...editForm, userId: currentUser?.id })
+        body: JSON.stringify({ ...editForm, title: titleReal, userId: currentUser?.id })
       });
       const data = await res.json();
       if (data.success) {
@@ -182,6 +158,31 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     }
   };
 
+  const playCpuBuzzerSound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+
+      const ctx = new AudioContext();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      oscillator.type = 'square'; 
+      oscillator.frequency.setValueAtTime(850, ctx.currentTime); 
+
+      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.15);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.15);
+    } catch (error) {
+      console.error("Gagal membunyikan buzzer:", error);
+    }
+  };
+
   const handleUpdateStatus = async (newStatus: string) => {
     setIsUpdatingStatus(true);
     try {
@@ -193,6 +194,11 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       const data = await res.json();
       if (data.success) {
         setTicket({ ...ticket, status: newStatus, resolvedAt: data.ticket.resolvedAt });
+        
+        if (newStatus === 'DONE') {
+          playCpuBuzzerSound();
+        }
+
         toast.success(`Status diubah menjadi ${newStatus.replace('_', ' ')}!`, { icon: '🔥', style: { borderRadius: '12px', background: '#333', color: '#fff' } });
         router.refresh();
       }
@@ -203,7 +209,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
     }
   };
 
-  // --- FUNGSI RESEND NOTIFIKASI AWAL ---
   const handleResendWA = () => {
     if (!ticket.pic?.phone) return toast.error('Nomor WhatsApp PIC belum terdaftar!');
     let waNumber = ticket.pic.phone.replace(/[^0-9]/g, '');
@@ -227,12 +232,11 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
   const handleResendEmail = () => {
     if (!ticket.requesterEmail) return toast.error('Email pemohon tidak terdaftar!');
     
-    const emailSubject = `[${ticket.priority}] Konfirmasi Tiket Layanan Logistik: ${ticket.ticketNumber} - ${ticket.title}`;
+    const emailSubject = `Ticketing Logistik: [${ticket.priority}] Konfirmasi Tiket ${ticket.ticketNumber} - ${ticket.title}`;
     const emailBody = `Yth. Bapak/Ibu ${ticket.requesterName},\n\nTerima kasih telah menghubungi Layanan Hotline Logistik BCA Syariah.\n\nBerikut adalah ringkasan tiket Anda yang telah kami terima dan masuk ke dalam antrean pengerjaan tim kami:\n\n- No. Tiket: ${ticket.ticketNumber}\n- Prioritas: ${ticket.priority}\n- Kategori: ${ticket.category}\n- Cabang/Unit: ${ticket.branchName}\n- Perihal: ${ticket.title}\n- Deskripsi: ${ticket.description}\n- PIC Bertugas: ${ticket.pic?.name || 'Belum di-assign'}\n\nKami akan segera menindaklanjuti permintaan ini sesuai dengan Standard Service Level Agreement (SLA) yang berlaku. Apabila ada informasi tambahan, PIC kami akan menghubungi Anda kembali.\n\nSalam,\nDepartemen Logistik BCA Syariah`;
     
     window.open(`mailto:${ticket.requesterEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_self');
   };
-  // ------------------------------------
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
@@ -315,11 +319,11 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
 
           {ticket?.issueImgUrl && (
             <div className="bg-white p-6 rounded-[24px] border border-slate-200/60 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-              <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><CheckCircle2 size={16}/> File Pendukung (Bukti)</h3>
-              <a href={ticket.issueImgUrl} target="_blank" rel="noopener noreferrer" className="block w-full md:w-1/2 rounded-xl border border-slate-200 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer">
-                <img src={ticket.issueImgUrl} alt="Bukti" className="w-full h-auto" />
+              <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><CheckCircle2 size={16}/> Link File Pendukung (Bukti)</h3>
+              <a href={ticket.issueImgUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-sm rounded-xl border border-blue-200 transition-colors">
+                <ExternalLink size={16} /> Buka Lampiran di Tab Baru
               </a>
-              <p className="text-[10px] text-slate-400 mt-2 font-medium italic">*Klik gambar untuk melihat dokumen penuh.</p>
+              <p className="text-[10px] text-slate-400 mt-3 font-medium italic">*Link akan membuka file di OneDrive / SharePoint atau menampilkan file terdahulu.</p>
             </div>
           )}
         </div>
@@ -402,7 +406,6 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
             </div>
           )}
 
-          {/* --- TOMBOL RESEND KHUSUS UNTUK ADMIN/KABID --- */}
           {canEdit && (
             <div className="bg-white p-5 rounded-[24px] border border-slate-200/60 shadow-[0_4px_20px_rgb(0,0,0,0.03)] space-y-3">
               <div className="flex items-center gap-2 mb-2">
@@ -500,21 +503,23 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                     <textarea required rows={3} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300 resize-none"></textarea>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">File Pendukung (Opsional)</label>
-                    {!editForm.issueImgUrl ? (
-                      <label className={`flex items-center justify-center w-full p-4 border-2 border-dashed rounded-xl cursor-pointer transition-all ${isUploading ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50'}`}>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
-                        {isUploading ? <span className="text-sm font-bold text-indigo-600 flex items-center gap-2"><Loader2 className="animate-spin" size={16}/> Uploading...</span> : <span className="text-sm font-semibold text-slate-500 flex items-center gap-2"><UploadCloud size={16}/> Klik untuk Upload File Baru</span>}
-                      </label>
-                    ) : (
-                      <div className="relative rounded-xl overflow-hidden border border-slate-200 shadow-sm w-full md:w-1/2 h-32 group">
-                        <img src={editForm.issueImgUrl} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                          <button type="button" onClick={() => setEditForm({...editForm, issueImgUrl: ''})} className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs rounded-lg transition-colors">Hapus & Ganti</button>
-                        </div>
+                  <div className={`space-y-1 transition-opacity duration-300 ${(editForm.mediaRequest === 'Lisan / Verbal' || editForm.mediaRequest === 'Teams Form') ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                    <label className="text-xs font-bold text-slate-500 flex justify-between">
+                      <span>Link Lampiran (OneDrive / SharePoint)</span>
+                    </label>
+                    <div className="relative mt-1">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <LinkIcon size={14} className="text-slate-400" />
                       </div>
-                    )}
+                      <input 
+                        type="url" 
+                        placeholder="Paste link file/folder dari OneDrive..." 
+                        value={editForm.issueImgUrl} 
+                        onChange={(e) => setEditForm({ ...editForm, issueImgUrl: e.target.value })}
+                        disabled={editForm.mediaRequest === 'Lisan / Verbal' || editForm.mediaRequest === 'Teams Form'}
+                        className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300 disabled:bg-slate-100 disabled:text-slate-400"
+                      />
+                    </div>
                   </div>
                 </form>
               </div>
@@ -526,7 +531,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
                 
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setIsEditOpen(false)} className="px-5 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors text-sm">Batal</button>
-                  <button form="edit-form" type="submit" disabled={isSaving || isUploading} className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-colors disabled:opacity-70 text-sm">
+                  <button form="edit-form" type="submit" disabled={isSaving} className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-colors disabled:opacity-70 text-sm">
                     {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Simpan Perubahan
                   </button>
                 </div>

@@ -4,8 +4,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Loader2, UploadCloud, CheckCircle2, Check } from 'lucide-react'; 
-import imageCompression from 'browser-image-compression';
+import { ArrowLeft, Save, Loader2, Link as LinkIcon, Check } from 'lucide-react'; 
 
 interface PIC {
   id: string;
@@ -25,7 +24,6 @@ const toTitleCase = (str: string) => {
 export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
 
   const todayLocal = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
@@ -40,11 +38,11 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
     picId: '',
     title: '',
     description: '',
-    issueImgUrl: '',
+    issueImgUrl: '', // Sekarang ini dipakai untuk nyimpen Link OneDrive/Teams
     notificationMethods: ['teams', 'email'] 
   });
 
-  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL'];
+  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM'];
   const pembayaranInitials = ['RIN', 'ETK', 'RKS'];
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
@@ -66,38 +64,6 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
     }));
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-
-    try {
-      const options = { maxSizeMB: 1, maxWidthOrHeight: 1024, useWebWorker: true };
-      const compressedFile = await imageCompression(file, options);
-      
-      const uploadData = new FormData();
-      uploadData.append('file', compressedFile);
-
-      const res = await fetch('/api/upload', { 
-        method: 'POST', 
-        body: uploadData 
-      });
-      
-      const data = await res.json();
-      
-      if (data.success && data.url) {
-        setFormData({ ...formData, issueImgUrl: data.url });
-      } else {
-        alert("Gagal mengunggah file. Silakan coba lagi.");
-      }
-    } catch (error) {
-      console.error("Gagal upload media:", error);
-      alert("Terjadi kesalahan jaringan saat mengunggah file.");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -114,7 +80,7 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
       return;
     }
     if (formData.mediaRequest !== 'Lisan / Verbal' && formData.mediaRequest !== 'Teams Form' && !formData.issueImgUrl) {
-      alert("⚠️ File pendukung WAJIB di-upload jika media request bukan Lisan / Verbal atau Teams Form!");
+      alert("⚠️ Link lampiran OneDrive/Teams WAJIB diisi jika media request bukan Lisan / Verbal atau Teams Form!");
       return;
     }
     if (!formData.category || !formData.picId) {
@@ -310,36 +276,27 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
           ></textarea>
         </div>
 
+        {/* BAGIAN UPLOAD DIUBAH JADI INPUT LINK */}
         <div className={`space-y-2 transition-opacity duration-300 ${(formData.mediaRequest === 'Lisan / Verbal' || formData.mediaRequest === 'Teams Form') ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
-            <span>Upload File Pendukung {(formData.mediaRequest !== 'Lisan / Verbal' && formData.mediaRequest !== 'Teams Form') && <span className="text-red-500">*WAJIB</span>}</span>
+            <span>Link Lampiran (OneDrive / SharePoint) {(formData.mediaRequest !== 'Lisan / Verbal' && formData.mediaRequest !== 'Teams Form') && <span className="text-red-500">*WAJIB</span>}</span>
             {(formData.mediaRequest === 'Lisan / Verbal' || formData.mediaRequest === 'Teams Form') && <span className="text-red-500">Dinonaktifkan</span>}
           </label>
           
-          {!formData.issueImgUrl ? (
-            <div className="relative">
-              <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading || formData.mediaRequest === 'Lisan / Verbal' || formData.mediaRequest === 'Teams Form'} className="hidden" id="upload-issue" />
-              <label htmlFor="upload-issue" className={`flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${isUploading ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50'}`}>
-                {isUploading ? (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 text-indigo-600 font-bold text-sm">
-                    <Loader2 size={18} className="animate-spin" /> Mengunggah File...
-                  </motion.div>
-                ) : (
-                  <div className="flex items-center gap-3 text-slate-500 font-semibold text-sm">
-                    <UploadCloud size={20} /> Klik untuk Unggah Bukti (Memo/Email)
-                  </div>
-                )}
-              </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <LinkIcon size={16} className="text-slate-400" />
             </div>
-          ) : (
-            <div className="relative rounded-xl overflow-hidden border border-slate-200 shadow-sm group w-full md:w-1/2">
-              <img src={formData.issueImgUrl} alt="File Issue" className="w-full h-auto object-cover max-h-48" />
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                <button type="button" onClick={() => setFormData({ ...formData, issueImgUrl: '' })} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold text-xs rounded-lg shadow-lg transition-colors">Hapus Gambar</button>
-              </div>
-              <div className="absolute top-3 left-3 px-2.5 py-1.5 bg-emerald-500/90 backdrop-blur-sm text-white text-[10px] font-bold rounded-md flex items-center gap-1.5 shadow-sm"><CheckCircle2 size={12} /> File Terlampir</div>
-            </div>
-          )}
+            <input 
+              type="url" 
+              placeholder="Paste link file/folder dari OneDrive atau MS Teams di sini..." 
+              value={formData.issueImgUrl} 
+              onChange={(e) => setFormData({ ...formData, issueImgUrl: e.target.value })}
+              disabled={formData.mediaRequest === 'Lisan / Verbal' || formData.mediaRequest === 'Teams Form'}
+              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all text-sm font-medium text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
+            />
+          </div>
+          <p className="text-[10px] text-slate-400 ml-1 italic">*Pastikan link sudah disetting "People in Organization" atau "Anyone" agar bisa diakses PIC.</p>
         </div>
 
         <div className="space-y-3 pt-6 border-t border-slate-100">
