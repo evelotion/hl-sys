@@ -4,7 +4,7 @@ import { db } from '../../lib/db';
 import DashboardClient from './DashboardClient';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getBusinessMinutesBetween } from '../../lib/businessDays'; // <-- IMPORT HELPER BARU
+import { getBusinessMinutesBetween } from '../../lib/businessDays';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,13 +110,9 @@ export default async function DashboardPage() {
     if (t.status === 'IN_PROGRESS') progress = 65;
     if (t.status === 'DONE') progress = 100;
 
-    // --- FIX LOGIKA ARGOMETER SLA: SEKARANG BERDASARKAN MENIT HARI KERJA ---
     let sla = 0;
     if (t.slaDeadline && t.createdAt) {
-       // Total durasi menit hari kerja yang dialokasikan dari awal sampai deadline
        const totalSlaBusinessMinutes = getBusinessMinutesBetween(new Date(t.createdAt), new Date(t.slaDeadline));
-       
-       // Menit hari kerja yang sudah terpakai sampai saat ini (atau sampai tiket selesai)
        const endTime = t.resolvedAt ? new Date(t.resolvedAt) : new Date();
        const businessMinutesElapsed = getBusinessMinutesBetween(new Date(t.createdAt), endTime);
        
@@ -129,6 +125,7 @@ export default async function DashboardPage() {
 
     return {
       id: t.ticketNumber,
+      originalId: t.id, // <-- INI YANG PENTING UNTUK ROUTING KE DETAIL TIKET
       status: t.status === 'IN_PROGRESS' ? 'ON PROGRESS' : (t.status === 'DONE' ? 'COMPLETED' : 'REQUEST'),
       progress: progress,
       sla: sla,

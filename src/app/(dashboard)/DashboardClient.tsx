@@ -10,7 +10,9 @@ interface PICWorkloadData { name: string; initial: string; activeTasks: number; 
 interface PICWorkloadGroup { P3: PICWorkloadData[]; Pengadaan: PICWorkloadData[]; Pembayaran: PICWorkloadData[]; Lainnya: PICWorkloadData[]; }
 
 interface TicketData {
-  id: string; status: string; progress: number; sla: number; pic: string;
+  id: string; 
+  originalId?: string; // <-- TAMBAHAN BARU
+  status: string; progress: number; sla: number; pic: string;
   picName?: string; picPhone?: string; picEmail?: string; priority?: string;
   title?: string; category?: string; cabang?: string; date?: string;
 }
@@ -51,12 +53,11 @@ export default function DashboardClient({
   const [showMilestone, setShowMilestone] = useState(true);
   const [currentMilestoneIdx, setCurrentMilestoneIdx] = useState(0);
 
-  // Efek Auto-Slide untuk Milestone jika ada > 1 orang
   useEffect(() => {
     if (milestones && milestones.length > 1 && showMilestone) {
       const timer = setInterval(() => {
         setCurrentMilestoneIdx((prev) => (prev + 1) % milestones.length);
-      }, 5000); // Ganti tiap 5 detik
+      }, 5000); 
       return () => clearInterval(timer);
     }
   }, [milestones, showMilestone]);
@@ -224,7 +225,6 @@ export default function DashboardClient({
             className="overflow-hidden"
           >
              <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_rgba(245,158,11,0.3)] relative text-white flex items-center border border-amber-400/50 overflow-hidden">
-                {/* Background Pattern */}
                 <div className="absolute right-0 top-0 opacity-10 pointer-events-none scale-150 -translate-y-4 translate-x-4">
                    <Trophy size={150} strokeWidth={1.5} />
                 </div>
@@ -261,7 +261,6 @@ export default function DashboardClient({
         )}
       </AnimatePresence>
 
-      {/* SISA DASHBOARD DI BAWAHNYA TETAP SAMA */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div className="flex items-center gap-2 text-slate-500 mb-3"><FileText size={18} className="text-indigo-500" /><span className="text-[10px] font-bold uppercase tracking-wider">Total Request</span></div>
@@ -713,7 +712,7 @@ export default function DashboardClient({
                         </button>
                       </div>
                       <button 
-                        onClick={() => router.push(`/tickets/${selectedUrgentTicket.id}`)}
+                        onClick={() => router.push(`/tickets/${selectedUrgentTicket.originalId}`)} // <-- UBAH KE originalId
                         className="w-full mt-3 flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all text-xs border border-slate-200"
                       >
                         Lihat Detail Tiket <ExternalLink size={12} />
@@ -725,7 +724,7 @@ export default function DashboardClient({
                   {userRole === 'PIC_LOGISTIK' && (
                     <div className="pt-4 border-t border-slate-100">
                       <button 
-                        onClick={() => router.push(`/tickets/${selectedUrgentTicket.id}`)}
+                        onClick={() => router.push(`/tickets/${selectedUrgentTicket.originalId}`)} // <-- UBAH KE originalId
                         className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-black rounded-xl hover:shadow-lg hover:from-indigo-700 hover:to-indigo-800 transition-all text-sm"
                       >
                         Buka Detail Lengkap & Proses <ExternalLink size={16} />
