@@ -4,6 +4,7 @@ import { db } from '../../lib/db';
 import DashboardClient from './DashboardClient';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { getBusinessMinutesBetween } from '../../lib/businessDays'; // <-- IMPORT HELPER BARU
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,7 @@ export default async function DashboardPage() {
   // 3. Beban Kerja PIC & LOGIKA MILESTONE APRESIASI
   const pics = await db.user.findMany({
     where: { role: 'PIC_LOGISTIK' },
-    include: { tasks: true } // Ambil semua task untuk dihitung
+    include: { tasks: true } 
   });
 
   const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM'];
@@ -70,7 +71,6 @@ export default async function DashboardPage() {
   const milestones: { name: string, initial: string, count: number }[] = [];
 
   pics.forEach((pic: any) => {
-    // A. Distribusi Beban Kerja
     const activeTasks = pic.tasks.filter((t: any) => t.status !== 'DONE').length;
     const completedTasks = pic.tasks.filter((t: any) => t.status === 'DONE').length;
     const picData = { name: pic.name, initial: pic.initial, activeTasks, completed: completedTasks };
@@ -80,7 +80,6 @@ export default async function DashboardPage() {
     else if (pembayaranInitials.includes(pic.initial)) picWorkload.Pembayaran.push(picData);
     else picWorkload.Lainnya.push(picData);
 
-    // B. Logika Deteksi Milestone (10, 50, 100)
     const doneTasks = pic.tasks
       .filter((t: any) => t.status === 'DONE' && t.resolvedAt)
       .sort((a: any, b: any) => new Date(a.resolvedAt).getTime() - new Date(b.resolvedAt).getTime());
@@ -89,10 +88,9 @@ export default async function DashboardPage() {
     
     const checkMilestone = (target: number) => {
       if (count >= target) {
-        const targetTask = doneTasks[target - 1]; // Task ke-target (index-0)
+        const targetTask = doneTasks[target - 1]; 
         if (targetTask && targetTask.resolvedAt) {
           const resolveDateStr = new Date(new Date(targetTask.resolvedAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
-          // Jika tiket ke-target diselesaikan HARI INI
           if (resolveDateStr === todayDateStr) {
             milestones.push({ name: pic.name, initial: pic.initial, count: target });
             return true;
@@ -102,7 +100,6 @@ export default async function DashboardPage() {
       return false;
     };
 
-    // Cek dari milestone tertinggi, kalau dapat langsung skip biar nggak dobel
     if (checkMilestone(100)) return;
     if (checkMilestone(50)) return;
     checkMilestone(10);
@@ -113,14 +110,18 @@ export default async function DashboardPage() {
     if (t.status === 'IN_PROGRESS') progress = 65;
     if (t.status === 'DONE') progress = 100;
 
+    // --- FIX LOGIKA ARGOMETER SLA: SEKARANG BERDASARKAN MENIT HARI KERJA ---
     let sla = 0;
     if (t.slaDeadline && t.createdAt) {
-       const totalSlaTime = new Date(t.slaDeadline).getTime() - new Date(t.createdAt).getTime();
-       const endTime = t.resolvedAt ? new Date(t.resolvedAt).getTime() : new Date().getTime();
-       const timeElapsed = endTime - new Date(t.createdAt).getTime();
+       // Total durasi menit hari kerja yang dialokasikan dari awal sampai deadline
+       const totalSlaBusinessMinutes = getBusinessMinutesBetween(new Date(t.createdAt), new Date(t.slaDeadline));
        
-       if (totalSlaTime > 0) {
-         sla = Math.round((timeElapsed / totalSlaTime) * 100);
+       // Menit hari kerja yang sudah terpakai sampai saat ini (atau sampai tiket selesai)
+       const endTime = t.resolvedAt ? new Date(t.resolvedAt) : new Date();
+       const businessMinutesElapsed = getBusinessMinutesBetween(new Date(t.createdAt), endTime);
+       
+       if (totalSlaBusinessMinutes > 0) {
+         sla = Math.round((businessMinutesElapsed / totalSlaBusinessMinutes) * 100);
        }
        if (sla > 100) sla = 100; 
        if (sla < 0) sla = 0;
@@ -170,7 +171,6 @@ export default async function DashboardPage() {
   const latestTickets = latestTicketsData.map(formatTicketData);
   const newestTicket = latestTickets.length > 0 ? latestTickets[0] : null;
 
-  // 5. LEADERBOARD DATA (Top 5 Cabang & Top 5 Requester)
   const topBranchesData = await db.ticket.groupBy({
     by: ['branchName'],
     where: whereBase,
@@ -206,7 +206,7 @@ export default async function DashboardPage() {
       newestTicket={newestTicket}
       topBranches={topBranches}
       topRequesters={topRequesters}
-      milestones={milestones} // <-- PASSING DATA APRESIASI KE CLIENT
+      milestones={milestones}
     />
   );
 }
