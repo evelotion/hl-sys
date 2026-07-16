@@ -15,8 +15,25 @@ export async function POST(request: Request) {
     } = body;
     
     const year = new Date().getFullYear();
-    const count = await db.ticket.count();
-    const ticketNumber = `LOG-${year}-${String(count + 1).padStart(4, '0')}`;
+    
+    // --- FIX LOGIKA NOMOR TIKET BIAR GAK ERROR PAS ADA TIKET DIHAPUS ---
+    // Cari tiket paling terakhir berdasarkan tanggal pembuatan
+    const lastTicket = await db.ticket.findFirst({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let nextSequence = 1;
+    
+    // Kalau udah ada tiket sebelumnya di tahun yang sama, ekstrak angkanya
+    if (lastTicket && lastTicket.ticketNumber.includes(`LOG-${year}-`)) {
+      const lastSequence = parseInt(lastTicket.ticketNumber.split('-')[2], 10);
+      if (!isNaN(lastSequence)) {
+        nextSequence = lastSequence + 1;
+      }
+    }
+    
+    const ticketNumber = `LOG-${year}-${String(nextSequence).padStart(4, '0')}`;
+    // -------------------------------------------------------------------
     
     const baseDate = requestDate ? new Date(requestDate) : new Date();
     
