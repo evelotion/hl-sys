@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Edit, Save, Loader2, X, Calendar, Clock, CheckCircle2, AlertCircle, Trash2, MessageCircle, Mail, Send, ArrowRight, Link as LinkIcon, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { bidangOfCategory, ROLES } from '@/src/lib/roles';
 
 // FUNGSI HELPER UNTUK MENGUBAH TEKS MENJADI TITLE CASE
 const toTitleCase = (str: string) => {
@@ -41,19 +42,11 @@ export default function TaskViewClient({ initialTicket, pics, currentUser, perms
     issueImgUrl: ticket?.issueImgUrl || ''
   });
 
-  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM'];
-  const pembayaranInitials = ['RIN', 'ETK', 'RKS'];
-  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
-
   const { canEdit, canDelete, canChangeStatus, canComment } = perms;
 
   const filteredPics = pics?.filter(pic => {
-    if (pic.initial === 'ABC') return true;
-    
-    if (editForm.category === 'P3') return p3Initials.includes(pic.initial);
-    if (editForm.category === 'Pembayaran') return pembayaranInitials.includes(pic.initial);
-    if (editForm.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial);
-    return false;
+    if (pic.role === ROLES.OPERATOR) return true;
+    return pic.team === bidangOfCategory(editForm.category);
   }) || [];
 
   const handleAddComment = async (e: React.FormEvent) => {

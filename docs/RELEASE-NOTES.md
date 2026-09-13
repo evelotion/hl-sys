@@ -85,6 +85,27 @@ luar jam sibuk dan diumumkan dulu ("akan diminta login ulang sekali setelah upda
 
 ---
 
+## ⚠️ Backfill `User.team` (Fase 3) baru dijalankan di DB dev, belum di produksi
+
+`scripts/backfill-bidang.ts` (dry-run via `npx tsx scripts/backfill-bidang.ts`, tulis dengan
+`npm run backfill:bidang -- --apply`) sejauh ini baru pernah dijalankan dalam mode **dry-run**
+terhadap DB **dev** — belum pernah `--apply`, baik ke dev maupun produksi.
+
+**Sebelum atau segera setelah Fase 3 di-deploy ke produksi**, `backfill:bidang -- --apply` **wajib**
+dijalankan juga terhadap DB produksi (dengan `DATABASE_URL` mengarah ke produksi). Kalau tidak:
+semua user produksi tetap bertim `Lainnya` seperti sebelumnya, dan dropdown PIC di halaman buat
+tiket serta edit tiket akan **kosong** untuk kategori P3, Pengadaan, dan Pembayaran (karena
+sekarang PIC difilter berdasarkan `User.team`, bukan lagi daftar inisial hardcoded).
+
+Script ini aman dijalankan berkali-kali: hanya menyentuh user yang `team`-nya masih `Lainnya`,
+tidak pernah menimpa nilai yang sudah diisi manual.
+
+**Catatan:** inisial `RLY` (PIC_LOGISTIK) tidak ada di pemetaan hardcoded manapun, sehingga tidak
+akan ikut ter-backfill otomatis, baik di dev maupun produksi. Bidangnya perlu diisi manual lewat
+`/users` setelah backfill dijalankan.
+
+---
+
 ## TODO operasional (belum dikerjakan, dicatat supaya tidak terlupa)
 
 **Rate limit login tidak efektif di Vercel.** `src/app/api/auth/login/route.ts` membatasi

@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, Trash2, X, Loader2, ChevronLeft, ChevronRight, KeyRound, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { ROLES, ROLE_LABELS, VALID_TEAMS, BIDANG_REQUIRED_ROLES } from '@/src/lib/roles';
+
+const emptyFormData = { id: '', initial: '', name: '', phone: '', email: '', role: ROLES.PIC_LOGISTIK as string, team: '' };
 
 export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
   const router = useRouter();
@@ -13,7 +16,7 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
   const [users, setUsers] = useState(initialUsers);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({ id: '', initial: '', name: '', phone: '', email: '', role: 'PIC_LOGISTIK' });
+  const [formData, setFormData] = useState(emptyFormData);
 
   // State Reset Password
   const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
@@ -28,6 +31,12 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (BIDANG_REQUIRED_ROLES.includes(formData.role) && !formData.team) {
+      toast.error('Bidang wajib diisi untuk role ini.');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const isEdit = !!formData.id;
@@ -145,7 +154,7 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
           <h2 className="text-xl font-black text-slate-800 tracking-wide">Manajemen User & Akses</h2>
           <p className="text-slate-500 mt-1 font-medium text-xs">Tambah, edit, dan cabut akses tim logistik.</p>
         </motion.div>
-        <button onClick={() => { setFormData({ id: '', initial: '', name: '', phone: '', email: '', role: 'PIC_LOGISTIK' }); setIsModalOpen(true); }} className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all text-sm">
+        <button onClick={() => { setFormData(emptyFormData); setIsModalOpen(true); }} className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all text-sm">
           <Plus size={16} /> Tambah User
         </button>
       </div>
@@ -159,6 +168,7 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nama Lengkap</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kontak & Email</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Role Sistem</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Bidang</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Aksi</th>
               </tr>
             </thead>
@@ -173,7 +183,10 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
                     <p className="text-[10px] text-slate-400 font-medium">{user.email || '-'}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${user.role === 'OPERATOR' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>{user.role}</span>
+                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${user.role === 'OPERATOR' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>{ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs font-semibold text-slate-600">{user.role === ROLES.VIEWER ? '-' : user.team}</span>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -241,12 +254,31 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">Role Sistem</label>
-                    <select required value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-400">
-                      <option value="PIC_LOGISTIK">PIC_LOGISTIK</option>
-                      <option value="OPERATOR">OPERATOR (ADMIN)</option>
+                    <select required value={formData.role} onChange={e => setFormData({...formData, role: e.target.value, team: e.target.value === ROLES.VIEWER ? '' : formData.team})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-400">
+                      {Object.entries(ROLE_LABELS).map(([roleValue, label]) => (
+                        <option key={roleValue} value={roleValue}>{label}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
+                {formData.role !== ROLES.VIEWER && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500">
+                      Bidang {BIDANG_REQUIRED_ROLES.includes(formData.role) && <span className="text-red-500">*WAJIB</span>}
+                    </label>
+                    <select
+                      required={BIDANG_REQUIRED_ROLES.includes(formData.role)}
+                      value={formData.team}
+                      onChange={e => setFormData({...formData, team: e.target.value})}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-400"
+                    >
+                      <option value="" disabled>-- Pilih Bidang --</option>
+                      {VALID_TEAMS.map(team => (
+                        <option key={team} value={team}>{team}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500">Nama Lengkap</label>
                   <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-400" />

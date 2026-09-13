@@ -4,7 +4,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Loader2, Link as LinkIcon, Check } from 'lucide-react'; 
+import { ArrowLeft, Save, Loader2, Link as LinkIcon, Check } from 'lucide-react';
+import { bidangOfCategory, ROLES } from '@/src/lib/roles';
 
 interface PIC {
   id: string;
@@ -12,6 +13,8 @@ interface PIC {
   initial: string;
   phone?: string | null;
   email?: string | null;
+  role: string;
+  team: string;
 }
 
 // FUNGSI HELPER UNTUK MENGUBAH TEKS MENJADI TITLE CASE (Besar di Awal Kata)
@@ -42,17 +45,9 @@ export default function CreateTicketClient({ pics }: { pics: PIC[] }) {
     notificationMethods: ['teams', 'email'] 
   });
 
-  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM'];
-  const pembayaranInitials = ['RIN', 'ETK', 'RKS'];
-  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
-
   const filteredPics = pics.filter(pic => {
-    if (pic.initial === 'ABC') return true; 
-
-    if (formData.category === 'P3') return p3Initials.includes(pic.initial);
-    if (formData.category === 'Pembayaran') return pembayaranInitials.includes(pic.initial);
-    if (formData.category === 'Pengadaan') return pengadaanInitials.includes(pic.initial);
-    return false;
+    if (pic.role === ROLES.OPERATOR) return true;
+    return pic.team === bidangOfCategory(formData.category);
   });
 
   const toggleNotification = (method: string) => {

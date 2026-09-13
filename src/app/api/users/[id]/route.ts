@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
 import { requirePermission, authErrorResponse } from '@/src/lib/auth';
-import { VALID_ROLES, VALID_TEAMS } from '@/src/lib/roles';
+import { VALID_ROLES, VALID_TEAMS, BIDANG_REQUIRED_ROLES } from '@/src/lib/roles';
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -22,6 +22,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     if (targetId === sessionUser.id && role !== undefined && role !== sessionUser.role) {
       return NextResponse.json({ error: 'Tidak bisa mengubah role akun sendiri' }, { status: 400 });
+    }
+
+    if (role !== undefined || team !== undefined) {
+      const existing = await db.user.findUnique({ where: { id: targetId }, select: { role: true, team: true } });
+      const effectiveRole = role !== undefined ? role : existing?.role;
+      const effectiveTeam = team !== undefined ? team : existing?.team;
+      if (effectiveRole && BIDANG_REQUIRED_ROLES.includes(effectiveRole) && !effectiveTeam) {
+        return NextResponse.json({ error: 'Bidang wajib diisi untuk role ini' }, { status: 400 });
+      }
     }
 
     const data: { initial?: string; name?: string; phone?: string | null; email?: string | null; role?: string; team?: string } = {};

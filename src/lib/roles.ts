@@ -24,6 +24,9 @@ export const ROLE_LABELS: Record<RoleName, string> = {
 // Role yang boleh menjadi PIC ("di-assign") pada tiket. K2: Kepala Departemen TIDAK termasuk.
 export const ASSIGNABLE_ROLES: readonly string[] = [ROLES.OPERATOR, ROLES.KEPALA_BIDANG, ROLES.PIC_LOGISTIK];
 
+// Role yang wajib punya bidang eksplisit (bukan default diam-diam) saat dibuat/diedit lewat /users.
+export const BIDANG_REQUIRED_ROLES: readonly string[] = [ROLES.KEPALA_BIDANG, ROLES.PIC_LOGISTIK];
+
 // Role yang boleh melihat SLA, kontak PIC/pemohon, export report, dan ganti password sendiri.
 // Daftar putih eksplisit (bukan "role !== VIEWER") supaya role yang tidak dikenal/tidak valid
 // ditolak, bukan otomatis diloloskan.

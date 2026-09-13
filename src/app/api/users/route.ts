@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
 import { requirePermission, authErrorResponse } from '@/src/lib/auth';
-import { VALID_ROLES, VALID_TEAMS } from '@/src/lib/roles';
+import { VALID_ROLES, VALID_TEAMS, BIDANG_REQUIRED_ROLES } from '@/src/lib/roles';
 
 export async function POST(req: Request) {
   try {
@@ -21,13 +21,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Bidang tidak valid' }, { status: 400 });
     }
 
+    const effectiveRole = role || 'PIC_LOGISTIK';
+    if (BIDANG_REQUIRED_ROLES.includes(effectiveRole) && !team) {
+      return NextResponse.json({ error: 'Bidang wajib diisi untuk role ini' }, { status: 400 });
+    }
+
     const newUser = await db.user.create({
       data: {
         initial: initial.trim().toUpperCase(),
         name: name.trim(),
         phone: phone || null,
         email: email || null,
-        role: role || 'PIC_LOGISTIK',
+        role: effectiveRole,
         team: team || 'Lainnya',
       },
       select: { id: true, initial: true, name: true, phone: true, email: true, role: true, team: true },

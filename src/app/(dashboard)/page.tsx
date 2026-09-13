@@ -3,7 +3,7 @@ import React from 'react';
 import { db } from '@/src/lib/db';
 import DashboardClient from './DashboardClient';
 import { requireUserForPage } from '@/src/lib/auth';
-import { ticketScopeWhere, hasFullTicketScope } from '@/src/lib/roles';
+import { ticketScopeWhere, hasFullTicketScope, ASSIGNABLE_ROLES, BIDANG } from '@/src/lib/roles';
 import { getBusinessMinutesBetween } from '@/src/lib/businessDays';
 import { getBidangBreakdown } from '@/src/lib/dashboardStats';
 
@@ -52,13 +52,9 @@ export default async function DashboardPage() {
 
   // 3. Beban Kerja PIC & LOGIKA MILESTONE APRESIASI
   const pics = await db.user.findMany({
-    where: { role: 'PIC_LOGISTIK' },
-    select: { name: true, initial: true, tasks: { select: { status: true, resolvedAt: true } } }
+    where: { role: { in: [...ASSIGNABLE_ROLES] } },
+    select: { name: true, initial: true, team: true, tasks: { select: { status: true, resolvedAt: true } } }
   });
-
-  const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM'];
-  const pembayaranInitials = ['RIN', 'ETK', 'RKS'];
-  const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
   const picWorkload = {
     P3: [] as any[],
@@ -75,9 +71,9 @@ export default async function DashboardPage() {
     const completedTasks = pic.tasks.filter((t: any) => t.status === 'DONE').length;
     const picData = { name: pic.name, initial: pic.initial, activeTasks, completed: completedTasks };
     
-    if (p3Initials.includes(pic.initial)) picWorkload.P3.push(picData);
-    else if (pengadaanInitials.includes(pic.initial)) picWorkload.Pengadaan.push(picData);
-    else if (pembayaranInitials.includes(pic.initial)) picWorkload.Pembayaran.push(picData);
+    if (pic.team === BIDANG.P3) picWorkload.P3.push(picData);
+    else if (pic.team === BIDANG.PENGADAAN) picWorkload.Pengadaan.push(picData);
+    else if (pic.team === BIDANG.PEMBAYARAN) picWorkload.Pembayaran.push(picData);
     else picWorkload.Lainnya.push(picData);
 
     const doneTasks = pic.tasks

@@ -3,7 +3,7 @@ import React from 'react';
 import { db } from '@/src/lib/db';
 import CreateTicketClient from './CreateTicketClient';
 import { requireUserForPage } from '@/src/lib/auth';
-import { can } from '@/src/lib/roles';
+import { can, ASSIGNABLE_ROLES } from '@/src/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,13 +23,15 @@ export default async function CreateTicketPage() {
 
   // Ambil data PIC beserta Inisial, NOMOR HP, dan EMAIL
   const pics = await db.user.findMany({
-    where: { role: 'PIC_LOGISTIK' },
+    where: { role: { in: [...ASSIGNABLE_ROLES] } },
     select: {
       id: true,
       name: true,
       initial: true,
       phone: true,
-      email: true
+      email: true,
+      role: true,
+      team: true
     },
     orderBy: { name: 'asc' }
   });

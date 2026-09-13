@@ -4,7 +4,7 @@ import { db } from '@/src/lib/db';
 import TaskViewClient from './TaskViewClient';
 import { notFound } from 'next/navigation';
 import { requireUserForPage } from '@/src/lib/auth';
-import { can } from '@/src/lib/roles';
+import { can, ASSIGNABLE_ROLES } from '@/src/lib/roles';
 
 export default async function TaskViewPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -39,8 +39,8 @@ export default async function TaskViewPage({ params }: { params: Promise<{ id: s
   };
 
   const pics = await db.user.findMany({
-    where: { role: 'PIC_LOGISTIK' },
-    select: { id: true, name: true, initial: true },
+    where: { role: { in: [...ASSIGNABLE_ROLES] } },
+    select: { id: true, name: true, initial: true, role: true, team: true },
     orderBy: { name: 'asc' }
   });
 

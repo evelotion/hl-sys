@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "backfill:bidang": "tsx scripts/backfill-bidang.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
