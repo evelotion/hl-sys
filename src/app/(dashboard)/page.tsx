@@ -3,9 +3,10 @@ import React from 'react';
 import { db } from '@/src/lib/db';
 import DashboardClient from './DashboardClient';
 import { requireUserForPage } from '@/src/lib/auth';
-import { ticketScopeWhere, hasFullTicketScope, ASSIGNABLE_ROLES, BIDANG } from '@/src/lib/roles';
+import { can, ticketScopeWhere, hasFullTicketScope, ASSIGNABLE_ROLES, BIDANG } from '@/src/lib/roles';
 import { getBusinessMinutesBetween } from '@/src/lib/businessDays';
 import { getBidangBreakdown } from '@/src/lib/dashboardStats';
+import { getTeamBacklog } from '@/src/lib/teamOversight';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,13 @@ export default async function DashboardPage() {
   const canManageTickets = user.role === 'OPERATOR' || user.role === 'KEPALA_DEPARTEMEN' || user.role === 'KEPALA_BIDANG';
   const canDrilldownBidang = hasFullTicketScope(user);
   const bidangBreakdown = await getBidangBreakdown('month');
+
+  // Fase 5: getTeamBacklog HANYA dipanggil kalau team:oversee true -- bukan dipanggil lalu
+  // hasilnya disembunyikan di UI untuk PIC/VIEWER.
+  const canOversee = can(user, 'team:oversee');
+  const teamOversight = canOversee
+    ? { backlog: await getTeamBacklog(user), sessionSid: user.sid }
+    : null;
 
   // 1. KPI Metrik
   const totalRequest = await db.ticket.count({ where: whereBase });
@@ -208,6 +216,7 @@ export default async function DashboardPage() {
       milestones={milestones}
       bidangBreakdown={bidangBreakdown}
       canDrilldownBidang={canDrilldownBidang}
+      teamOversight={teamOversight}
     />
   );
 }

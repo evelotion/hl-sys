@@ -1,12 +1,28 @@
 // hl-sys/src/app/(dashboard)/DashboardClient.tsx
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation"; 
-import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink, Trophy, MapPin, Bell, MonitorPlay } from "lucide-react";
+import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink, Trophy, MapPin, Bell, MonitorPlay, Users } from "lucide-react";
 import BidangDistributionCard from './BidangDistributionCard';
+import TeamBacklogSection from './TeamBacklogSection';
+import TeamDigestPopup from './TeamDigestPopup';
 import type { BidangBreakdown } from '@/src/lib/dashboardStats';
+import type { TeamBacklog } from '@/src/lib/teamOversight';
+
+interface TeamOversightData { backlog: TeamBacklog; sessionSid: string; }
+
+const TEAM_DIGEST_SEEN_KEY = 'hl_team_digest_seen';
+
+// Baca localStorage lewat useSyncExternalStore (bukan useEffect+setState) supaya nilainya
+// benar-benar terbaca setelah hydration tanpa memicu setState di dalam effect body dan tanpa
+// mismatch SSR/client (snapshot server selalu null, snapshot client baca localStorage asli).
+function subscribeNoop() { return () => {}; }
+function getTeamDigestSeenSnapshot(): string | null {
+  try { return localStorage.getItem(TEAM_DIGEST_SEEN_KEY); } catch { return null; }
+}
+function getTeamDigestSeenServerSnapshot(): string | null { return null; }
 
 interface PICWorkloadData { name: string; initial: string; activeTasks: number; completed: number; }
 interface PICWorkloadGroup { P3: PICWorkloadData[]; Pengadaan: PICWorkloadData[]; Pembayaran: PICWorkloadData[]; Lainnya: PICWorkloadData[]; }
@@ -23,11 +39,11 @@ interface LeaderboardItem { name: string; count: number; }
 interface MilestoneItem { name: string; initial: string; count: number; }
 
 export default function DashboardClient({
-  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, canManageTickets, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket, topBranches, topRequesters, milestones, bidangBreakdown, canDrilldownBidang
+  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, canManageTickets, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket, topBranches, topRequesters, milestones, bidangBreakdown, canDrilldownBidang, teamOversight
 }: {
   totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; canManageTickets: boolean; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
   criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null; topBranches: LeaderboardItem[]; topRequesters: LeaderboardItem[]; milestones: MilestoneItem[];
-  bidangBreakdown: BidangBreakdown; canDrilldownBidang: boolean;
+  bidangBreakdown: BidangBreakdown; canDrilldownBidang: boolean; teamOversight: TeamOversightData | null;
 }) {
   const router = useRouter(); 
 
@@ -103,6 +119,36 @@ export default function DashboardClient({
     else if (hour < 18) setGreeting("Selamat Sore");
     else setGreeting("Selamat Malam");
   }, []);
+
+  // --- POP UP RINGKASAN TIM (Fase 5) ---
+  // Muncul sekali per sessionSid (login baru), bukan sekali per hari/refresh. Dibandingkan
+  // lewat localStorage, bukan tanggal, sesuai blueprint 7.3. seenSid dibaca lewat
+  // useSyncExternalStore (bukan effect+setState) supaya aman dari hydration mismatch: snapshot
+  // server selalu null (pop up tidak pernah "muncul" di HTML awal), baru setelah hydration
+  // client membaca nilai localStorage yang sebenarnya.
+  const seenSid = useSyncExternalStore(subscribeNoop, getTeamDigestSeenSnapshot, getTeamDigestSeenServerSnapshot);
+  const [manuallyOpened, setManuallyOpened] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  const shouldAutoShowDigest = !!teamOversight && teamOversight.backlog.summary.totalTiket > 0 && seenSid !== teamOversight.sessionSid && !dismissed;
+  const showTeamDigest = shouldAutoShowDigest || manuallyOpened;
+
+  const handleCloseTeamDigest = () => {
+    setManuallyOpened(false);
+    setDismissed(true);
+    if (teamOversight) {
+      try { localStorage.setItem(TEAM_DIGEST_SEEN_KEY, teamOversight.sessionSid); } catch { /* abaikan */ }
+    }
+  };
+
+  const handleViewAllTeamDigest = () => {
+    handleCloseTeamDigest();
+    document.getElementById('team-backlog-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const teamDigestTopMembers = teamOversight
+    ? teamOversight.backlog.members.slice(0, 8).map(m => ({ name: m.name, initial: m.initial, total: m.menunggu + m.diproses, lewatSla: m.lewatSla }))
+    : [];
 
   const getStatusColor = (status: string) => {
     if (status === "COMPLETED") return "text-emerald-600 bg-emerald-50 border-emerald-100";
@@ -181,6 +227,16 @@ export default function DashboardClient({
         </motion.div>
 
         <div className="flex items-center gap-3">
+        {teamOversight && (
+          <button
+            onClick={() => setManuallyOpened(true)}
+            title="Buka ringkasan tiket tim yang belum selesai"
+            className="flex items-center gap-2 p-3 md:px-4 rounded-full border bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 shadow-sm transition-all text-sm font-bold"
+          >
+            <Users size={20} />
+            <span className="hidden md:inline">Ringkasan Tim</span>
+          </button>
+        )}
         <button
           onClick={openTvMode}
           title="Tampilkan dashboard layar penuh untuk TV kantor"
@@ -305,6 +361,12 @@ export default function DashboardClient({
           <div><p className="text-3xl md:text-4xl font-black text-slate-800">{slaOnTime}%</p></div>
         </div>
       </div>
+
+      {teamOversight && (
+        <div className="mt-4">
+          <TeamBacklogSection backlog={teamOversight.backlog} />
+        </div>
+      )}
 
       <div className="mt-4">
         <BidangDistributionCard initialData={bidangBreakdown} canDrilldown={canDrilldownBidang} />
@@ -767,6 +829,16 @@ export default function DashboardClient({
           </div>
         )}
       </AnimatePresence>
+
+      {teamOversight && (
+        <TeamDigestPopup
+          open={showTeamDigest}
+          onClose={handleCloseTeamDigest}
+          onViewAll={handleViewAllTeamDigest}
+          summary={teamOversight.backlog.summary}
+          topMembers={teamDigestTopMembers}
+        />
+      )}
     </div>
   );
 }

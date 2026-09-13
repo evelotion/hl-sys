@@ -22,7 +22,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   // ganti password sendiri, atau reset oleh user:manage) -> anggap sesi lama sudah dibatalkan.
   if (payload.iat < user.sessionsValidFrom.getTime()) return null;
 
-  return { id: user.id, initial: user.initial, name: user.name, role: user.role, team: user.team };
+  return { id: user.id, initial: user.initial, name: user.name, role: user.role, team: user.team, sid: payload.sid };
 }
 
 export class AuthError extends Error {

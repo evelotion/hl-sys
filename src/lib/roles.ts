@@ -63,6 +63,7 @@ export interface SessionUser {
   name: string;
   role: string;
   team: string;
+  sid: string;
 }
 
 export interface TicketContext {
