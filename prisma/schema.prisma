@@ -19,6 +19,10 @@ password  String   @default("password123")
   // --- TAMBAHIN BARIS INI BRO ---
   team String @default("Lainnya")
 
+  // Waktu terakhir password berubah (login upgrade plaintext->hash, ganti password sendiri,
+  // atau reset oleh user:manage). Token session dengan iat lebih lama dari ini ditolak.
+  sessionsValidFrom DateTime @default(now())
+
   createdAt DateTime @default(now())
 updatedAt DateTime @default(now()) @updatedAt
 

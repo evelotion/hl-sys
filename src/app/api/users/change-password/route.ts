@@ -1,8 +1,10 @@
 // src/app/api/users/change-password/route.ts
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { db } from '@/src/lib/db';
 import bcrypt from 'bcryptjs';
 import { getCurrentUser } from '@/src/lib/auth';
+import { createSessionPayload, signSession, sessionMaxAgeSeconds, SESSION_COOKIE_NAME } from '@/src/lib/session';
 
 export async function POST(request: Request) {
   try {
@@ -35,7 +37,23 @@ export async function POST(request: Request) {
 
     await db.user.update({
       where: { id: sessionUser.id },
-      data: { password: hashedPassword },
+      data: { password: hashedPassword, sessionsValidFrom: new Date() },
+    });
+
+    // Bump sessionsValidFrom di atas membatalkan SEMUA sesi user ini, termasuk sesi yang
+    // sedang dipakai untuk memanggil endpoint ini sendiri. Terbitkan session token baru
+    // supaya pengguna yang baru saja ganti password sendiri tidak ikut ter-logout —
+    // hanya sesi di perangkat lain yang seharusnya kena.
+    const payload = createSessionPayload(sessionUser.id, sessionUser.role);
+    const token = await signSession(payload);
+
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: sessionMaxAgeSeconds(payload),
     });
 
     return NextResponse.json({ success: true, message: 'Password berhasil diubah' });

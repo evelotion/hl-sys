@@ -14,10 +14,15 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 
   const user = await db.user.findUnique({
     where: { id: payload.uid },
-    select: { id: true, initial: true, name: true, role: true, team: true },
+    select: { id: true, initial: true, name: true, role: true, team: true, sessionsValidFrom: true },
   });
+  if (!user) return null;
 
-  return user;
+  // Token diterbitkan sebelum password terakhir berubah (login upgrade plaintext->hash,
+  // ganti password sendiri, atau reset oleh user:manage) -> anggap sesi lama sudah dibatalkan.
+  if (payload.iat < user.sessionsValidFrom.getTime()) return null;
+
+  return { id: user.id, initial: user.initial, name: user.name, role: user.role, team: user.team };
 }
 
 export class AuthError extends Error {

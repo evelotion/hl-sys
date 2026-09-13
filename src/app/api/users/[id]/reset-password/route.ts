@@ -29,13 +29,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
-    await db.user.update({ where: { id: targetId }, data: { password: hashed } });
+    await db.user.update({ where: { id: targetId }, data: { password: hashed, sessionsValidFrom: new Date() } });
 
     // TODO(fase-lanjutan): idealnya dicatat ke tabel activity log tersendiri untuk
-    // aktivitas user (bukan tiket). BELUM dikerjakan atas permintaan Indra: skema
-    // ActivityLog saat ini mewajibkan ticketId, dan ada drift migration kolom
-    // User.password yang belum diselesaikan, jadi migration baru ditahan dulu.
-    // Untuk sekarang cukup dicatat ke server log.
+    // aktivitas user (bukan tiket), bukan cuma console.log. BELUM dikerjakan atas
+    // permintaan Indra: skema ActivityLog saat ini mewajibkan ticketId (tidak ada
+    // jalur untuk aktivitas non-tiket). Perlu tabel log terpisah, bukan membuat
+    // ticketId nullable. Untuk sekarang cukup dicatat ke server log.
     console.log(`[user:manage] ${sessionUser.initial} mereset password user ${targetUser.initial} pada ${new Date().toISOString()}`);
 
     return NextResponse.json({ success: true });

@@ -14,6 +14,10 @@ const DUMMY_HASH = '$2b$10$qvOYHHKjeGAGVY/RGBJxne18JXWbmTnsrI5RicAdEBAJTitJ6YZMO
 
 // Rate limit sederhana, di memori proses saja (bukan persisten, cukup untuk memperlambat
 // brute force kasar; reset kalau server restart, dan tidak terbagi antar instance).
+// TODO(operasional): TIDAK efektif di Vercel — tiap serverless instance/region punya memori
+// sendiri-sendiri, jadi batas 5x/15menit ini berlaku per-instance, bukan per-inisial secara
+// global. Perlu diganti dengan penyimpanan bersama (mis. Redis/Upstash) sebelum diandalkan
+// sebagai proteksi utama di produksi. Dicatat sebagai TODO, belum dikerjakan.
 const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_ATTEMPT_MAX = 5;
 const loginAttempts = new Map<string, { count: number; windowStart: number }>();
@@ -76,7 +80,7 @@ export async function POST(request: Request) {
       // Kompatibilitas data lama: password plaintext, upgrade ke bcrypt setelah cocok.
       passwordOk = true;
       const hashed = await bcrypt.hash(password, 10);
-      await db.user.update({ where: { id: user.id }, data: { password: hashed } });
+      await db.user.update({ where: { id: user.id }, data: { password: hashed, sessionsValidFrom: new Date() } });
     }
 
     if (!passwordOk) {
