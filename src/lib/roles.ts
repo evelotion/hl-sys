@@ -24,6 +24,16 @@ export const ROLE_LABELS: Record<RoleName, string> = {
 // Role yang boleh menjadi PIC ("di-assign") pada tiket. K2: Kepala Departemen TIDAK termasuk.
 export const ASSIGNABLE_ROLES: readonly string[] = [ROLES.OPERATOR, ROLES.KEPALA_BIDANG, ROLES.PIC_LOGISTIK];
 
+// Role yang boleh melihat SLA, kontak PIC/pemohon, export report, dan ganti password sendiri.
+// Daftar putih eksplisit (bukan "role !== VIEWER") supaya role yang tidak dikenal/tidak valid
+// ditolak, bukan otomatis diloloskan.
+const SLA_CONTACT_EXPORT_PASSWORD_ROLES: readonly string[] = [
+  ROLES.OPERATOR,
+  ROLES.KEPALA_DEPARTEMEN,
+  ROLES.KEPALA_BIDANG,
+  ROLES.PIC_LOGISTIK,
+];
+
 export const BIDANG = {
   P3: 'P3',
   PENGADAAN: 'Pengadaan',
@@ -55,6 +65,10 @@ export interface SessionUser {
 export interface TicketContext {
   picId?: string | null;
   category?: string | null;
+  /** Team milik PIC yang di-assign ke tiket ini (User.team). Dipakai supaya cek permission
+   * KEPALA_BIDANG konsisten dengan ticketScopeWhere, yang mengizinkan tiket berdasarkan
+   * kategori ATAU bidang PIC-nya. */
+  picTeam?: string | null;
 }
 
 export type Permission =
@@ -83,7 +97,9 @@ function isOwnTicket(user: SessionUser, ctx?: TicketContext): boolean {
 
 function isInBidang(user: SessionUser, ctx?: TicketContext): boolean {
   if (!ctx) return false;
-  return bidangOfCategory(ctx.category) === user.team;
+  if (bidangOfCategory(ctx.category) === user.team) return true;
+  if (ctx.picTeam && ctx.picTeam === user.team) return true;
+  return false;
 }
 
 export function can(
@@ -123,19 +139,15 @@ export function can(
 
     case 'sla:view':
     case 'contact:view':
-      return role !== ROLES.VIEWER;
+    case 'report:export':
+    case 'password:change':
+      return SLA_CONTACT_EXPORT_PASSWORD_ROLES.includes(role);
 
     case 'team:oversee':
       return role === ROLES.KEPALA_DEPARTEMEN || role === ROLES.KEPALA_BIDANG;
 
     case 'user:manage':
       return role === ROLES.OPERATOR || role === ROLES.KEPALA_DEPARTEMEN;
-
-    case 'report:export':
-      return role !== ROLES.VIEWER;
-
-    case 'password:change':
-      return role !== ROLES.VIEWER;
 
     default:
       return false;

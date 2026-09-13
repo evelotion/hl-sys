@@ -6,6 +6,41 @@ import { db } from '@/src/lib/db';
 import { createSessionPayload, signSession, sessionMaxAgeSeconds, SESSION_COOKIE_NAME } from '@/src/lib/session';
 
 const GENERIC_ERROR = 'Inisial atau password salah.';
+const RATE_LIMIT_ERROR = 'Terlalu banyak percobaan login untuk inisial ini. Coba lagi dalam beberapa menit.';
+
+// Hash bcrypt tetap (bukan dari akun mana pun) khusus untuk menyamakan waktu respons
+// ketika inisial tidak ditemukan, supaya tidak bisa dibedakan dari inisial yang salah password.
+const DUMMY_HASH = '$2b$10$qvOYHHKjeGAGVY/RGBJxne18JXWbmTnsrI5RicAdEBAJTitJ6YZMO';
+
+// Rate limit sederhana, di memori proses saja (bukan persisten, cukup untuk memperlambat
+// brute force kasar; reset kalau server restart, dan tidak terbagi antar instance).
+const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_ATTEMPT_MAX = 5;
+const loginAttempts = new Map<string, { count: number; windowStart: number }>();
+
+function isRateLimited(key: string): boolean {
+  const entry = loginAttempts.get(key);
+  if (!entry) return false;
+  if (Date.now() - entry.windowStart > LOGIN_ATTEMPT_WINDOW_MS) {
+    loginAttempts.delete(key);
+    return false;
+  }
+  return entry.count >= LOGIN_ATTEMPT_MAX;
+}
+
+function recordFailedAttempt(key: string): void {
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+  if (!entry || now - entry.windowStart > LOGIN_ATTEMPT_WINDOW_MS) {
+    loginAttempts.set(key, { count: 1, windowStart: now });
+  } else {
+    entry.count += 1;
+  }
+}
+
+function clearAttempts(key: string): void {
+  loginAttempts.delete(key);
+}
 
 export async function POST(request: Request) {
   try {
@@ -18,9 +53,18 @@ export async function POST(request: Request) {
     }
 
     const upperInitial = userInitial.toUpperCase();
+
+    if (isRateLimited(upperInitial)) {
+      return NextResponse.json({ error: RATE_LIMIT_ERROR }, { status: 429 });
+    }
+
     const user = await db.user.findUnique({ where: { initial: upperInitial } });
 
     if (!user) {
+      // Tetap jalankan bcrypt.compare ke hash dummy supaya waktu respons sama
+      // dengan kasus inisial ditemukan tapi password salah.
+      await bcrypt.compare(password, DUMMY_HASH);
+      recordFailedAttempt(upperInitial);
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
     }
 
@@ -36,8 +80,11 @@ export async function POST(request: Request) {
     }
 
     if (!passwordOk) {
+      recordFailedAttempt(upperInitial);
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
     }
+
+    clearAttempts(upperInitial);
 
     const payload = createSessionPayload(user.id, user.role);
     const token = await signSession(payload);

@@ -30,7 +30,7 @@ export default async function TaskViewPage({ params }: { params: Promise<{ id: s
     notFound();
   }
 
-  const ticketCtx = { picId: ticket.picId, category: ticket.category };
+  const ticketCtx = { picId: ticket.picId, category: ticket.category, picTeam: ticket.pic?.team };
   const perms = {
     canEdit: can(currentUser, 'ticket:edit', ticketCtx),
     canDelete: can(currentUser, 'ticket:delete', ticketCtx),

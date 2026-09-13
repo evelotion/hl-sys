@@ -23,12 +23,12 @@ export async function POST(
 
     const existingTicket = await db.ticket.findUnique({
       where: { id: ticketId },
-      select: { picId: true, category: true },
+      select: { picId: true, category: true, pic: { select: { team: true } } },
     });
     if (!existingTicket) {
       return NextResponse.json({ error: 'Tiket tidak ditemukan' }, { status: 404 });
     }
-    await requirePermission('ticket:status', { picId: existingTicket.picId, category: existingTicket.category });
+    await requirePermission('ticket:status', { picId: existingTicket.picId, category: existingTicket.category, picTeam: existingTicket.pic?.team });
 
     // 2. Ganti kata 'prisma' jadi 'db'
     const updatedTicket = await db.ticket.update({

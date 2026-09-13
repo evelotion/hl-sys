@@ -80,8 +80,13 @@ export async function verifySession(token: string | undefined | null): Promise<S
   if (parts.length !== 2) return null;
   const [body, sig] = parts;
 
+  // Sengaja di LUAR try/catch: kalau SESSION_SECRET hilang/tidak valid, ini harus
+  // melempar error yang jelas ke pemanggil (proxy/getCurrentUser), bukan tertelan
+  // jadi "session tidak valid" yang bikin semua orang diam-diam dilempar ke /login
+  // tanpa pesan apa pun.
+  const key = await getHmacKey();
+
   try {
-    const key = await getHmacKey();
     const signatureBytes = base64UrlToBytes(sig);
     const valid = await crypto.subtle.verify('HMAC', key, signatureBytes.buffer as ArrayBuffer, encoder.encode(body));
     if (!valid) return null;

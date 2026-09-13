@@ -17,12 +17,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const existingTicket = await db.ticket.findUnique({
       where: { id: ticketId },
-      select: { picId: true, category: true },
+      select: { picId: true, category: true, pic: { select: { team: true } } },
     });
     if (!existingTicket) {
       return NextResponse.json({ error: 'Tiket tidak ditemukan' }, { status: 404 });
     }
-    const ticketCtx = { picId: existingTicket.picId, category: existingTicket.category };
+    const ticketCtx = { picId: existingTicket.picId, category: existingTicket.category, picTeam: existingTicket.pic?.team };
 
     // 1. UPDATE STATUS
     if (body.action === 'UPDATE_STATUS') {
@@ -108,12 +108,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     const existingTicket = await db.ticket.findUnique({
       where: { id: ticketId },
-      select: { picId: true, category: true },
+      select: { picId: true, category: true, pic: { select: { team: true } } },
     });
     if (!existingTicket) {
       return NextResponse.json({ error: 'Tiket tidak ditemukan' }, { status: 404 });
     }
-    await requirePermission('ticket:delete', { picId: existingTicket.picId, category: existingTicket.category });
+    await requirePermission('ticket:delete', { picId: existingTicket.picId, category: existingTicket.category, picTeam: existingTicket.pic?.team });
 
     // Hapus Log Aktivitasnya dulu biar relasinya gak error
     await db.activityLog.deleteMany({ where: { ticketId } });
