@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation"; 
-import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink, Trophy, MapPin, Bell } from "lucide-react"; 
+import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink, Trophy, MapPin, Bell, MonitorPlay } from "lucide-react";
 
 interface PICWorkloadData { name: string; initial: string; activeTasks: number; completed: number; }
 interface PICWorkloadGroup { P3: PICWorkloadData[]; Pengadaan: PICWorkloadData[]; Pembayaran: PICWorkloadData[]; Lainnya: PICWorkloadData[]; }
@@ -151,6 +151,18 @@ export default function DashboardClient({
     );
   };
 
+  // --- MODE TV ---
+  // Fullscreen harus diminta langsung dari klik user. Navigasi ke /tv setelahnya
+  // adalah navigasi client-side, jadi layar penuh tetap aktif.
+  const openTvMode = async () => {
+    try {
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+    } catch {
+      // Browser menolak fullscreen: tetap buka Mode TV, bisa tekan F atau tombol layar penuh di sana
+    }
+    router.push('/tv');
+  };
+
   const currentIndex = selectedUrgentTicket ? activeContextList.findIndex(t => t.id === selectedUrgentTicket.id) : -1;
   const hasNext = currentIndex >= 0 && currentIndex < activeContextList.length - 1;
   const hasPrev = currentIndex > 0;
@@ -165,9 +177,19 @@ export default function DashboardClient({
           <p className="text-slate-500 mt-1 font-medium text-xs md:text-sm">Berikut adalah ringkasan performa sistem logistik hari ini.</p>
         </motion.div>
 
+        <div className="flex items-center gap-3">
+        <button
+          onClick={openTvMode}
+          title="Tampilkan dashboard layar penuh untuk TV kantor"
+          className="flex items-center gap-2 p-3 md:px-4 rounded-full border bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 shadow-sm transition-all text-sm font-bold"
+        >
+          <MonitorPlay size={20} />
+          <span className="hidden md:inline">Mode TV</span>
+        </button>
+
         <div className="relative" ref={notifRef}>
-          <button 
-            onClick={handleToggleNotif} 
+          <button
+            onClick={handleToggleNotif}
             className={`p-3 rounded-full border transition-all shadow-sm relative flex items-center justify-center ${isNotifOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}
           >
             <Bell size={20} />
@@ -212,6 +234,7 @@ export default function DashboardClient({
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
         </div>
       </div>
 
