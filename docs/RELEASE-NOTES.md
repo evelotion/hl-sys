@@ -101,8 +101,8 @@ Script ini aman dijalankan berkali-kali: hanya menyentuh user yang `team`-nya ma
 tidak pernah menimpa nilai yang sudah diisi manual.
 
 **Catatan:** inisial `RLY` (PIC_LOGISTIK) tidak ada di pemetaan hardcoded manapun, sehingga tidak
-akan ikut ter-backfill otomatis, baik di dev maupun produksi. Bidangnya perlu diisi manual lewat
-`/users` setelah backfill dijalankan.
+akan ikut ter-backfill otomatis, baik di dev maupun produksi. Indra sudah memutuskan: **tidak perlu
+diisi manual sekarang** — bidangnya akan diurus di Fase 6, bukan bagian dari backfill Fase 3 ini.
 
 ---
 
