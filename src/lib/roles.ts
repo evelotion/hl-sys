@@ -177,3 +177,26 @@ export function ticketScopeWhere(user: SessionUser): Prisma.TicketWhereInput {
       return {};
   }
 }
+
+/**
+ * Filter kategori Prisma untuk satu bidang. Dipakai untuk pie chart bidang (Fase 4) dan
+ * query param ?kategori= di halaman tiket. Untuk bidang Lainnya, kategorinya adalah yang
+ * bukan tiga bidang utama (konsisten dengan bidangOfCategory dan ticketScopeWhere di atas).
+ */
+export function categoryFilterForBidang(bidang: string): Prisma.TicketWhereInput['category'] {
+  if (bidang === BIDANG.LAINNYA) {
+    return { notIn: MAIN_BIDANG as string[] };
+  }
+  return bidang;
+}
+
+/**
+ * True kalau ticketScopeWhere(user) TIDAK membatasi apa pun (lihat semua tiket departemen).
+ * Dipakai untuk memutuskan apakah drill-through dari chart berlingkup departemen (mis. pie
+ * chart bidang) ke /tickets aman ditampilkan tanpa terlihat seperti bug — kalau lingkup
+ * tiket user terbatas (PIC_LOGISTIK, KEPALA_BIDANG), angka di /tickets tidak akan cocok
+ * dengan angka di chart yang mencakup seluruh departemen.
+ */
+export function hasFullTicketScope(user: { role: string }): boolean {
+  return user.role !== ROLES.PIC_LOGISTIK && user.role !== ROLES.KEPALA_BIDANG;
+}

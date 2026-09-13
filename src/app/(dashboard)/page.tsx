@@ -3,8 +3,9 @@ import React from 'react';
 import { db } from '@/src/lib/db';
 import DashboardClient from './DashboardClient';
 import { requireUserForPage } from '@/src/lib/auth';
-import { ticketScopeWhere } from '@/src/lib/roles';
+import { ticketScopeWhere, hasFullTicketScope } from '@/src/lib/roles';
 import { getBusinessMinutesBetween } from '@/src/lib/businessDays';
+import { getBidangBreakdown } from '@/src/lib/dashboardStats';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,8 @@ export default async function DashboardPage() {
 
   const whereBase = ticketScopeWhere(user);
   const canManageTickets = user.role === 'OPERATOR' || user.role === 'KEPALA_DEPARTEMEN' || user.role === 'KEPALA_BIDANG';
+  const canDrilldownBidang = hasFullTicketScope(user);
+  const bidangBreakdown = await getBidangBreakdown('month');
 
   // 1. KPI Metrik
   const totalRequest = await db.ticket.count({ where: whereBase });
@@ -207,6 +210,8 @@ export default async function DashboardPage() {
       topBranches={topBranches}
       topRequesters={topRequesters}
       milestones={milestones}
+      bidangBreakdown={bidangBreakdown}
+      canDrilldownBidang={canDrilldownBidang}
     />
   );
 }

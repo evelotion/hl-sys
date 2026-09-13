@@ -5,6 +5,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation"; 
 import { FileText, Clock, CheckCircle2, Timer, ChevronDown, User, Tags, AlertCircle, X, Info, MessageCircle, Mail, ChevronLeft, ChevronRight, ExternalLink, Trophy, MapPin, Bell, MonitorPlay } from "lucide-react";
+import BidangDistributionCard from './BidangDistributionCard';
+import type { BidangBreakdown } from '@/src/lib/dashboardStats';
 
 interface PICWorkloadData { name: string; initial: string; activeTasks: number; completed: number; }
 interface PICWorkloadGroup { P3: PICWorkloadData[]; Pengadaan: PICWorkloadData[]; Pembayaran: PICWorkloadData[]; Lainnya: PICWorkloadData[]; }
@@ -21,10 +23,11 @@ interface LeaderboardItem { name: string; count: number; }
 interface MilestoneItem { name: string; initial: string; count: number; }
 
 export default function DashboardClient({
-  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, canManageTickets, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket, topBranches, topRequesters, milestones
+  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, canManageTickets, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket, topBranches, topRequesters, milestones, bidangBreakdown, canDrilldownBidang
 }: {
   totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; canManageTickets: boolean; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
   criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null; topBranches: LeaderboardItem[]; topRequesters: LeaderboardItem[]; milestones: MilestoneItem[];
+  bidangBreakdown: BidangBreakdown; canDrilldownBidang: boolean;
 }) {
   const router = useRouter(); 
 
@@ -301,6 +304,10 @@ export default function DashboardClient({
           <div className="flex items-center gap-2 text-slate-500 mb-3"><Timer size={18} className="text-indigo-600" /><span className="text-[10px] font-bold uppercase tracking-wider">SLA On Time</span></div>
           <div><p className="text-3xl md:text-4xl font-black text-slate-800">{slaOnTime}%</p></div>
         </div>
+      </div>
+
+      <div className="mt-4">
+        <BidangDistributionCard initialData={bidangBreakdown} canDrilldown={canDrilldownBidang} />
       </div>
 
       <details className="group bg-blue-50/60 border border-blue-100 rounded-2xl shadow-sm mt-3 marker:content-[''] transition-all duration-300">

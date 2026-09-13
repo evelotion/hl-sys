@@ -3,15 +3,20 @@ import React from 'react';
 import { db } from '@/src/lib/db';
 import TicketClient from './TicketClient';
 import { requireUserForPage } from '@/src/lib/auth';
-import { can, ticketScopeWhere } from '@/src/lib/roles';
+import { can, ticketScopeWhere, categoryFilterForBidang, VALID_TEAMS } from '@/src/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TicketsPage() {
+export default async function TicketsPage({ searchParams }: { searchParams: Promise<{ kategori?: string }> }) {
   const user = await requireUserForPage();
+  const { kategori } = await searchParams;
+
+  const where = kategori && VALID_TEAMS.includes(kategori)
+    ? { ...ticketScopeWhere(user), category: categoryFilterForBidang(kategori) }
+    : ticketScopeWhere(user);
 
   const ticketsData = await db.ticket.findMany({
-    where: ticketScopeWhere(user),
+    where,
     select: {
       id: true,
       ticketNumber: true,
