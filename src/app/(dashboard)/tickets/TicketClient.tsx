@@ -23,7 +23,7 @@ const FilterButton = ({ label, value, currentFilter, onSelect }: { label: string
   );
 };
 
-export default function TicketClient({ initialTickets, userRole }: { initialTickets: any[]; userRole?: string; }) {
+export default function TicketClient({ initialTickets, canCreateTicket }: { initialTickets: any[]; canCreateTicket: boolean; }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -108,7 +108,7 @@ export default function TicketClient({ initialTickets, userRole }: { initialTick
           <p className="text-slate-500 mt-1 font-medium text-xs">Pantau dan kelola semua request logistik dari satu pintu.</p>
         </motion.div>
         
-        {userRole !== 'PIC_LOGISTIK' && (
+        {canCreateTicket && (
           <motion.button 
             onClick={() => router.push('/tickets/create')}
             whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}

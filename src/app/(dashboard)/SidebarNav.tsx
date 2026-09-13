@@ -8,7 +8,7 @@ import { LayoutDashboard, Ticket, Package, LogOut, Loader2, Users, FileSpreadshe
 import { motion, AnimatePresence } from 'framer-motion'; 
 import toast from 'react-hot-toast';
 
-export default function SidebarNav({ userName, userRole }: { userName: string, userRole: string }) {
+export default function SidebarNav({ userName, userRole, canManageUsers, canChangePassword }: { userName: string, userRole: string, canManageUsers: boolean, canChangePassword: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -45,7 +45,7 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
     { name: 'Reports', href: '/reports', icon: FileSpreadsheet },
   ];
 
-  if (userRole === 'OPERATOR') {
+  if (canManageUsers) {
     navItems.push({ name: 'Manajemen User', href: '/users', icon: Users });
   }
 
@@ -68,8 +68,8 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
     if (passForm.newPassword !== passForm.confirmPassword) {
       return toast.error("Password baru dan konfirmasi tidak cocok!");
     }
-    if (passForm.newPassword.length < 6) {
-      return toast.error("Password baru minimal 6 karakter!");
+    if (passForm.newPassword.length < 8) {
+      return toast.error("Password baru minimal 8 karakter!");
     }
 
     setIsSubmittingPassword(true);
@@ -149,10 +149,12 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sesi Aktif</p>
                 </div>
                 
-                <button onClick={() => { setIsPasswordModalOpen(true); setIsDropdownOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 font-semibold hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors text-sm group">
-                  <Lock size={16} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                  <span>Ganti Password</span>
-                </button>
+                {canChangePassword && (
+                  <button onClick={() => { setIsPasswordModalOpen(true); setIsDropdownOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 font-semibold hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors text-sm group">
+                    <Lock size={16} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                    <span>Ganti Password</span>
+                  </button>
+                )}
 
                 <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 font-semibold hover:bg-red-50 rounded-lg transition-colors group disabled:opacity-70 text-sm">
                   {isLoggingOut ? <Loader2 size={16} className="animate-spin text-red-500" /> : <LogOut size={16} className="text-red-500 group-hover:scale-110 transition-transform" />}
@@ -216,9 +218,11 @@ export default function SidebarNav({ userName, userRole }: { userName: string, u
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{userRole?.replace('_', ' ')}</p>
                 </div>
                 
-                <button onClick={() => { setIsPasswordModalOpen(true); setIsMobileDropdownOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-slate-600 font-bold hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors text-xs">
-                  <Lock size={14} /> Ganti Password
-                </button>
+                {canChangePassword && (
+                  <button onClick={() => { setIsPasswordModalOpen(true); setIsMobileDropdownOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-slate-600 font-bold hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors text-xs">
+                    <Lock size={14} /> Ganti Password
+                  </button>
+                )}
 
                 <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-2 px-3 py-2.5 text-red-600 font-bold hover:bg-red-50 rounded-lg transition-colors text-xs disabled:opacity-70">
                   {isLoggingOut ? <Loader2 size={14} className="animate-spin text-red-500" /> : <LogOut size={14} />}

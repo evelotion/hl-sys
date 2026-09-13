@@ -1,7 +1,16 @@
 // hl-sys/src/app/api/upload/route.ts
 import { NextResponse } from 'next/server';
+import { getCurrentUser } from '@/src/lib/auth';
 
 export async function POST(req: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (user.role === 'VIEWER') {
+    return NextResponse.json({ error: 'Akun Pemantau tidak dapat mengunggah file' }, { status: 403 });
+  }
+
   try {
     // 1. Terima file dari Frontend
     const formData = await req.formData();

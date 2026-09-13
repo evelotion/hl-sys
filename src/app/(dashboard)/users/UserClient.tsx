@@ -2,38 +2,29 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, KeyRound, Plus, Edit, Trash2, X, Loader2, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Loader2, ChevronLeft, ChevronRight, KeyRound, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
 export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
   const router = useRouter();
-  
-  // State Developer Lock
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  const [password, setPassword] = useState('');
-  
+
   // State CRUD User
   const [users, setUsers] = useState(initialUsers);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({ id: '', initial: '', name: '', phone: '', email: '', role: 'PIC_LOGISTIK' });
 
+  // State Reset Password
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
+  const [resetForm, setResetForm] = useState({ newPassword: '', confirmPassword: '' });
+  const [isResetting, setIsResetting] = useState(false);
+  const [showResetPass, setShowResetPass] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
   // --- STATE PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Jumlah user per halaman
-
-  // Handle Unlock
-  const handleUnlock = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === 'Bukatutup12@') {
-      setIsUnlocked(true);
-      toast.success('Akses Developer Dibuka!');
-    } else {
-      toast.error('Password Salah!');
-      setPassword('');
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +68,47 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
       setIsSaving(false);
     }
   };
+  // Handle Reset Password
+  const openResetModal = (id: string, name: string) => {
+    setResetForm({ newPassword: '', confirmPassword: '' });
+    setShowResetPass(false);
+    setShowResetConfirm(false);
+    setResetTarget({ id, name });
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+
+    if (resetForm.newPassword.length < 8) {
+      return toast.error('Password baru minimal 8 karakter!');
+    }
+    if (resetForm.newPassword !== resetForm.confirmPassword) {
+      return toast.error('Password baru dan konfirmasi tidak cocok!');
+    }
+
+    setIsResetting(true);
+    try {
+      const res = await fetch(`/api/users/${resetTarget.id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: resetForm.newPassword })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(`Password ${resetTarget.name} berhasil direset!`);
+        setResetTarget(null);
+        setResetForm({ newPassword: '', confirmPassword: '' });
+      } else {
+        toast.error(data.error || 'Gagal mereset password.');
+      }
+    } catch (error) {
+      toast.error('Terjadi kesalahan sistem.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   // Handle Delete
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Yakin ingin menghapus user ${name}?`)) return;
@@ -106,31 +138,6 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
     currentPage * itemsPerPage
   );
 
-  // TAMPILAN LOCK SCREEN
-  if (!isUnlocked) {
-    return (
-      <div className="flex items-center justify-center min-h-[70vh]">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/80 backdrop-blur-2xl p-8 rounded-[24px] border border-slate-200/60 shadow-[0_10px_40px_rgb(0,0,0,0.05)] w-full max-w-sm text-center">
-          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
-            <ShieldAlert size={28} strokeWidth={2.5} />
-          </div>
-          <h2 className="text-xl font-black text-slate-800 mb-1">Developer Area</h2>
-          <p className="text-xs text-slate-500 font-medium mb-6">Masukkan Security Key untuk mengelola data user.</p>
-          <form onSubmit={handleUnlock} className="space-y-4">
-            <div className="relative">
-              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 text-sm font-bold text-center tracking-[0.2em]" />
-            </div>
-            <button type="submit" className="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm">
-              Buka Akses <ArrowRight size={16} />
-            </button>
-          </form>
-        </motion.div>
-      </div>
-    );
-  }
-
-  // TAMPILAN MANAJEMEN USER (JIKA UNLOCKED)
   return (
     <div className="space-y-6 pb-10">
       <div className="flex justify-between items-end">
@@ -171,6 +178,7 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button onClick={() => { setFormData(user); setIsModalOpen(true); }} className="p-2 bg-slate-50 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit size={14} /></button>
+                      <button onClick={() => openResetModal(user.id, user.name)} className="p-2 bg-slate-50 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Reset Password"><KeyRound size={14} /></button>
                       <button onClick={() => handleDelete(user.id, user.name)} className="p-2 bg-slate-50 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
                     </div>
                   </td>
@@ -255,6 +263,68 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
                   <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors text-sm">Batal</button>
                   <button type="submit" disabled={isSaving} className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-colors disabled:opacity-70 text-sm">
                     {isSaving ? <Loader2 size={16} className="animate-spin" /> : 'Simpan Data'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Reset Password */}
+      <AnimatePresence>
+        {resetTarget && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[24px] shadow-2xl w-full max-w-sm border border-slate-100 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-2 text-slate-800">
+                  <KeyRound size={18} className="text-amber-600" />
+                  <h3 className="font-black">Reset Password: {resetTarget.name}</h3>
+                </div>
+                <button onClick={() => setResetTarget(null)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={20}/></button>
+              </div>
+
+              <form onSubmit={handleResetPasswordSubmit} className="p-6 space-y-4">
+                <div className="space-y-1 relative">
+                  <label className="text-xs font-bold text-slate-500">Password Baru</label>
+                  <div className="relative">
+                    <input
+                      type={showResetPass ? "text" : "password"}
+                      required
+                      value={resetForm.newPassword}
+                      onChange={(e) => setResetForm({ ...resetForm, newPassword: e.target.value })}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300 pr-10"
+                      placeholder="Minimal 8 karakter"
+                    />
+                    <button type="button" onClick={() => setShowResetPass(!showResetPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600">
+                      {showResetPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1 relative">
+                  <label className="text-xs font-bold text-slate-500">Konfirmasi Password Baru</label>
+                  <div className="relative">
+                    <input
+                      type={showResetConfirm ? "text" : "password"}
+                      required
+                      value={resetForm.confirmPassword}
+                      onChange={(e) => setResetForm({ ...resetForm, confirmPassword: e.target.value })}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-300 pr-10"
+                      placeholder="Ulangi password baru"
+                    />
+                    <button type="button" onClick={() => setShowResetConfirm(!showResetConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600">
+                      {showResetConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex gap-3">
+                  <button type="button" onClick={() => setResetTarget(null)} className="flex-1 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors text-sm">
+                    Batal
+                  </button>
+                  <button type="submit" disabled={isResetting} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-amber-600 text-white font-bold rounded-xl shadow-md hover:bg-amber-700 transition-colors disabled:opacity-70 text-sm">
+                    {isResetting ? <Loader2 size={16} className="animate-spin" /> : 'Reset'}
                   </button>
                 </div>
               </form>

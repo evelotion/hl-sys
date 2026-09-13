@@ -1,14 +1,29 @@
 import React from 'react';
-import { db } from '../../../lib/db';
+import { db } from '@/src/lib/db';
 import ReportsClient from './ReportsClient';
+import { requireUserForPage } from '@/src/lib/auth';
+import { ticketScopeWhere } from '@/src/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReportsPage() {
-  // Ambil semua data tiket lengkap dengan relasi PIC
+  const user = await requireUserForPage();
+
   const tickets = await db.ticket.findMany({
+    where: ticketScopeWhere(user),
     orderBy: { createdAt: 'desc' },
-    include: { pic: true }
+    select: {
+      id: true,
+      ticketNumber: true,
+      priority: true,
+      requestDate: true,
+      category: true,
+      branchName: true,
+      requesterName: true,
+      title: true,
+      status: true,
+      pic: { select: { name: true, initial: true, team: true } },
+    }
   });
   return <ReportsClient tickets={tickets} />;
 }

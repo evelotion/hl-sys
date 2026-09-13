@@ -2,11 +2,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
 import { addBusinessDays } from '@/src/lib/businessDays'; // <-- IMPORT HELPER HARI KERJA
+import { requirePermission, authErrorResponse } from '@/src/lib/auth';
 
 export async function POST(request: Request) {
   try {
+    await requirePermission('ticket:create');
     const body = await request.json();
-    
+
     // 1. TAMBAH requesterEmail & priority di destructuring
     const { 
       title, description, category, priority, branchName, 
@@ -69,6 +71,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, ticket: newTicket });
   } catch (error) {
+    const authResponse = authErrorResponse(error);
+    if (authResponse) return authResponse;
     console.error("Error create ticket:", error);
     return NextResponse.json({ error: "Gagal membuat tiket" }, { status: 500 });
   }

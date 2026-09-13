@@ -1,21 +1,27 @@
 // src/app/(dashboard)/tickets/[id]/page.tsx
 import React from 'react';
-import { db } from '@/src/lib/db'; 
+import { db } from '@/src/lib/db';
 import TaskViewClient from './TaskViewClient';
 import { notFound } from 'next/navigation';
-import { cookies } from 'next/headers'; 
+import { requireUserForPage } from '@/src/lib/auth';
+import { can } from '@/src/lib/roles';
 
 export default async function TaskViewPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
   const id = resolvedParams.id;
 
+  const currentUser = await requireUserForPage();
+
   const ticket = await db.ticket.findUnique({
     where: { id: id },
-    include: { 
-      pic: true,
-      logs: {          
-        include: { user: true }, 
-        orderBy: { createdAt: 'asc' } 
+    select: {
+      id: true, ticketNumber: true, title: true, description: true, category: true, status: true,
+      issueImgUrl: true, proofImgUrl: true, branchName: true, requesterName: true, requesterEmail: true,
+      mediaRequest: true, requestDate: true, slaDeadline: true, picId: true, createdAt: true, resolvedAt: true, priority: true,
+      pic: { select: { id: true, name: true, initial: true, phone: true, email: true, team: true } },
+      logs: {
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, action: true, message: true, createdAt: true, user: { select: { name: true, initial: true, role: true } } }
       }
     }
   });
@@ -24,28 +30,26 @@ export default async function TaskViewPage({ params }: { params: Promise<{ id: s
     notFound();
   }
 
+  const ticketCtx = { picId: ticket.picId, category: ticket.category };
+  const perms = {
+    canEdit: can(currentUser, 'ticket:edit', ticketCtx),
+    canDelete: can(currentUser, 'ticket:delete', ticketCtx),
+    canChangeStatus: can(currentUser, 'ticket:status', ticketCtx),
+    canComment: can(currentUser, 'ticket:comment', ticketCtx),
+  };
+
   const pics = await db.user.findMany({
     where: { role: 'PIC_LOGISTIK' },
     select: { id: true, name: true, initial: true },
     orderBy: { name: 'asc' }
   });
 
-  const cookieStore = await cookies();
-  const sessionStr = cookieStore.get('user_session')?.value;
-  const sessionUser = sessionStr ? JSON.parse(sessionStr) : null;
-  
-  // TAHAP 3: Ambil data user utuh dari DB biar dapet "initial"-nya
-  let currentUser = sessionUser;
-  if (sessionUser?.id) {
-    const dbUser = await db.user.findUnique({ where: { id: sessionUser.id } });
-    if (dbUser) currentUser = dbUser;
-  }
-
   return (
-    <TaskViewClient 
-      initialTicket={ticket} 
-      pics={pics} 
-      currentUser={currentUser} 
+    <TaskViewClient
+      initialTicket={ticket}
+      pics={pics}
+      currentUser={currentUser}
+      perms={perms}
     />
   );
 }

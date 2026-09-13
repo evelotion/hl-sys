@@ -1,6 +1,7 @@
 // hl-sys/src/app/api/tickets/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
+import { requirePermission, authErrorResponse } from '@/src/lib/auth';
 
 function addDays(date: Date, days: number) {
   const result = new Date(date);
@@ -13,39 +14,48 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const body = await request.json();
     const resolvedParams = await params;
     const ticketId = resolvedParams.id;
-    const userId = body.userId; 
+
+    const existingTicket = await db.ticket.findUnique({
+      where: { id: ticketId },
+      select: { picId: true, category: true },
+    });
+    if (!existingTicket) {
+      return NextResponse.json({ error: 'Tiket tidak ditemukan' }, { status: 404 });
+    }
+    const ticketCtx = { picId: existingTicket.picId, category: existingTicket.category };
 
     // 1. UPDATE STATUS
     if (body.action === 'UPDATE_STATUS') {
+      const sessionUser = await requirePermission('ticket:status', ticketCtx);
       const updated = await db.ticket.update({
         where: { id: ticketId },
         data: { status: body.status, resolvedAt: body.status === 'DONE' ? new Date() : null }
       });
-      if (userId) {
-        await db.activityLog.create({
-          data: { ticketId, userId, action: 'SYSTEM', message: `Mengubah status menjadi ${body.status.replace('_', ' ')}` }
-        });
-      }
+      await db.activityLog.create({
+        data: { ticketId, userId: sessionUser.id, action: 'SYSTEM', message: `Mengubah status menjadi ${body.status.replace('_', ' ')}` }
+      });
       return NextResponse.json({ success: true, ticket: updated });
     }
 
     // 2. TAMBAH KOMENTAR MANUAL
     if (body.action === 'ADD_COMMENT') {
+      const sessionUser = await requirePermission('ticket:comment', ticketCtx);
       await db.activityLog.create({
-        data: { ticketId, userId, action: 'COMMENT', message: body.message }
+        data: { ticketId, userId: sessionUser.id, action: 'COMMENT', message: body.message }
       });
       return NextResponse.json({ success: true });
     }
 
     // 3. FULL EDIT DARI ADM
+    const sessionUser = await requirePermission('ticket:edit', ticketCtx);
     const { title, description, category, branchName, picId, requestDate, mediaRequest, issueImgUrl } = body;
-    
+
     // AMBIL TIKET LAMA (Termasuk data PIC lama)
-    const oldTicket = await db.ticket.findUnique({ 
+    const oldTicket = await db.ticket.findUnique({
       where: { id: ticketId },
-      include: { pic: true } 
+      select: { category: true, picId: true, pic: { select: { name: true } } }
     });
-    
+
     const baseDate = requestDate ? new Date(requestDate) : new Date();
     let deadline = new Date(baseDate);
     if (category === 'P3') deadline = addDays(baseDate, 3);
@@ -61,30 +71,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     });
 
     // CATAT LOG OTOMATIS
-    if (userId) {
-      if (oldTicket?.category !== category) {
-        await db.activityLog.create({
-          data: { ticketId, userId, action: 'SYSTEM', message: `Mengubah Kategori dari ${oldTicket?.category} menjadi ${category}` }
-        });
-      }
+    if (oldTicket?.category !== category) {
+      await db.activityLog.create({
+        data: { ticketId, userId: sessionUser.id, action: 'SYSTEM', message: `Mengubah Kategori dari ${oldTicket?.category} menjadi ${category}` }
+      });
+    }
 
-      // IMPROVE POIN 2: REKAM JEJAK RE-ASSIGNMENT
-      if (oldTicket?.picId !== picId) {
-        const oldPicName = oldTicket?.pic?.name || 'Belum di-assign';
-        const newPicName = updatedTicket.pic?.name || 'Belum di-assign';
-        await db.activityLog.create({
-          data: { ticketId, userId, action: 'SYSTEM', message: `Re-assign PIC dari ${oldPicName} menjadi ${newPicName}` }
-        });
-      }
+    // IMPROVE POIN 2: REKAM JEJAK RE-ASSIGNMENT
+    if (oldTicket?.picId !== picId) {
+      const oldPicName = oldTicket?.pic?.name || 'Belum di-assign';
+      const newPicName = updatedTicket.pic?.name || 'Belum di-assign';
+      await db.activityLog.create({
+        data: { ticketId, userId: sessionUser.id, action: 'SYSTEM', message: `Re-assign PIC dari ${oldPicName} menjadi ${newPicName}` }
+      });
     }
 
     // Return flag isReassigned agar Frontend tahu kapan harus nembak notifikasi
-    return NextResponse.json({ 
-      success: true, 
-      ticket: updatedTicket, 
-      isReassigned: oldTicket?.picId !== picId 
+    return NextResponse.json({
+      success: true,
+      ticket: updatedTicket,
+      isReassigned: oldTicket?.picId !== picId
     });
   } catch (error) {
+    const authResponse = authErrorResponse(error);
+    if (authResponse) return authResponse;
     console.error("Error update ticket:", error);
     return NextResponse.json({ error: "Gagal mengupdate tiket" }, { status: 500 });
   }
@@ -95,15 +105,26 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     const resolvedParams = await params;
     const ticketId = resolvedParams.id;
-    
+
+    const existingTicket = await db.ticket.findUnique({
+      where: { id: ticketId },
+      select: { picId: true, category: true },
+    });
+    if (!existingTicket) {
+      return NextResponse.json({ error: 'Tiket tidak ditemukan' }, { status: 404 });
+    }
+    await requirePermission('ticket:delete', { picId: existingTicket.picId, category: existingTicket.category });
+
     // Hapus Log Aktivitasnya dulu biar relasinya gak error
     await db.activityLog.deleteMany({ where: { ticketId } });
-    
+
     // Baru hapus Tiketnya
     await db.ticket.delete({ where: { id: ticketId } });
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
+    const authResponse = authErrorResponse(error);
+    if (authResponse) return authResponse;
     console.error("Error delete ticket:", error);
     return NextResponse.json({ error: "Gagal menghapus tiket" }, { status: 500 });
   }

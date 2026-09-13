@@ -1,21 +1,18 @@
 ﻿// hl-sys/src/app/(dashboard)/page.tsx
 import React from 'react';
-import { db } from '../../lib/db'; 
+import { db } from '@/src/lib/db';
 import DashboardClient from './DashboardClient';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { getBusinessMinutesBetween } from '../../lib/businessDays';
+import { requireUserForPage } from '@/src/lib/auth';
+import { ticketScopeWhere } from '@/src/lib/roles';
+import { getBusinessMinutesBetween } from '@/src/lib/businessDays';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  const cookieStore = await cookies();
-  const sessionStr = cookieStore.get('user_session')?.value;
-  if (!sessionStr) redirect('/login');
-  const user = JSON.parse(sessionStr);
+  const user = await requireUserForPage();
 
-  const isPic = user.role === 'PIC_LOGISTIK';
-  const whereBase = isPic ? { picId: user.id } : {};
+  const whereBase = ticketScopeWhere(user);
+  const canManageTickets = user.role === 'OPERATOR' || user.role === 'KEPALA_DEPARTEMEN' || user.role === 'KEPALA_BIDANG';
 
   // 1. KPI Metrik
   const totalRequest = await db.ticket.count({ where: whereBase });
@@ -53,7 +50,7 @@ export default async function DashboardPage() {
   // 3. Beban Kerja PIC & LOGIKA MILESTONE APRESIASI
   const pics = await db.user.findMany({
     where: { role: 'PIC_LOGISTIK' },
-    include: { tasks: true } 
+    select: { name: true, initial: true, tasks: { select: { status: true, resolvedAt: true } } }
   });
 
   const p3Initials = ['FER', 'MAU', 'ASM', 'MLK', 'NOV', 'IND', 'SML', 'IBL', 'SEM'];
@@ -141,10 +138,16 @@ export default async function DashboardPage() {
     };
   };
 
+  const ticketListSelect = {
+    id: true, ticketNumber: true, status: true, createdAt: true, resolvedAt: true, slaDeadline: true,
+    title: true, category: true, priority: true, branchName: true,
+    pic: { select: { initial: true, name: true, phone: true, email: true } },
+  } as const;
+
   const activeSlaTickets = await db.ticket.findMany({
     where: { ...whereBase, status: { not: 'DONE' }, slaDeadline: { not: null } },
     orderBy: { slaDeadline: 'asc' },
-    include: { pic: true }
+    select: ticketListSelect
   });
 
   const formattedActiveSla = activeSlaTickets.map(formatTicketData);
@@ -152,10 +155,10 @@ export default async function DashboardPage() {
   const criticalTickets = formattedActiveSla.filter(t => t.sla >= 80);
 
   const recentData = await db.ticket.findMany({
-    where: { ...whereBase, status: 'IN_PROGRESS' }, 
+    where: { ...whereBase, status: 'IN_PROGRESS' },
     orderBy: { createdAt: 'desc' },
     take: 15,
-    include: { pic: true }
+    select: ticketListSelect
   });
   const recentTickets = recentData.map(formatTicketData);
 
@@ -163,7 +166,7 @@ export default async function DashboardPage() {
     where: whereBase,
     orderBy: { createdAt: 'desc' },
     take: 10,
-    include: { pic: true }
+    select: ticketListSelect
   });
   const latestTickets = latestTicketsData.map(formatTicketData);
   const newestTicket = latestTickets.length > 0 ? latestTickets[0] : null;
@@ -194,7 +197,7 @@ export default async function DashboardPage() {
       completed={completed}
       slaOnTime={slaOnTimePercentage}
       picWorkload={picWorkload}
-      userRole={user.role} 
+      canManageTickets={canManageTickets}
       userName={user.name}
       recentTickets={recentTickets}
       urgentTicket={urgentTicket} 

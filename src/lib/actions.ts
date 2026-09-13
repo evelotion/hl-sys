@@ -3,9 +3,19 @@
 
 import { db } from './db';
 import { revalidatePath } from 'next/cache';
+import { requirePermission } from './auth';
 
 export async function selesaikanTiket(ticketId: string, proofImgUrl?: string) {
   try {
+    const existingTicket = await db.ticket.findUnique({
+      where: { id: ticketId },
+      select: { picId: true, category: true },
+    });
+    if (!existingTicket) {
+      return { success: false };
+    }
+    await requirePermission('ticket:status', { picId: existingTicket.picId, category: existingTicket.category });
+
     await db.ticket.update({
       where: { id: ticketId },
       data: {

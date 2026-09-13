@@ -15,14 +15,12 @@ export default function LoginPage() {
   const [nip, setNip] = useState('');
   const [password, setPassword] = useState('');
 
-  // Otomatis isi form kalau ada parameter nip dan pwd di URL
+  // Otomatis isi form kalau ada parameter nip di URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const nipParam = params.get('nip');
-    const pwdParam = params.get('pwd');
 
     if (nipParam) setNip(nipParam);
-    if (pwdParam) setPassword(pwdParam);
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {

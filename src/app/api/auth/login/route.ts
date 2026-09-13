@@ -1,42 +1,57 @@
 // src/app/api/auth/login/route.ts
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { db } from '../../../../lib/db';
+import bcrypt from 'bcryptjs';
+import { db } from '@/src/lib/db';
+import { createSessionPayload, signSession, sessionMaxAgeSeconds, SESSION_COOKIE_NAME } from '@/src/lib/session';
+
+const GENERIC_ERROR = 'Inisial atau password salah.';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const userInitial = body.initial || body.nip || '';
-    const password = body.password;
-    
-    if (password !== 'password123') {
-      return NextResponse.json({ error: 'Password salah! Gunakan password default.' }, { status: 401 });
-    }
+    const userInitial = typeof body.initial === 'string' ? body.initial : (typeof body.nip === 'string' ? body.nip : '');
+    const password = typeof body.password === 'string' ? body.password : '';
 
-    if (!userInitial) {
-      return NextResponse.json({ error: 'Inisial tidak boleh kosong!' }, { status: 400 });
+    if (!userInitial || !password) {
+      return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
     }
 
     const upperInitial = userInitial.toUpperCase();
-    
-    // Langsung cari user berdasarkan kolom 'initial' di database
-    const user = await db.user.findUnique({ 
-      where: { initial: upperInitial } 
-    });
+    const user = await db.user.findUnique({ where: { initial: upperInitial } });
 
     if (!user) {
-      return NextResponse.json({ error: 'Inisial tidak ditemukan di sistem!' }, { status: 401 });
+      return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
     }
 
+    let passwordOk = false;
+
+    if (user.password.startsWith('$2')) {
+      passwordOk = await bcrypt.compare(password, user.password);
+    } else if (user.password === password) {
+      // Kompatibilitas data lama: password plaintext, upgrade ke bcrypt setelah cocok.
+      passwordOk = true;
+      const hashed = await bcrypt.hash(password, 10);
+      await db.user.update({ where: { id: user.id }, data: { password: hashed } });
+    }
+
+    if (!passwordOk) {
+      return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
+    }
+
+    const payload = createSessionPayload(user.id, user.role);
+    const token = await signSession(payload);
+
     const cookieStore = await cookies();
-    cookieStore.set('user_session', JSON.stringify({ id: user.id, name: user.name, role: user.role }), {
+    cookieStore.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24, // 1 hari
-      path: '/'
+      sameSite: 'lax',
+      path: '/',
+      maxAge: sessionMaxAgeSeconds(payload),
     });
 
-    return NextResponse.json({ success: true, user });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });

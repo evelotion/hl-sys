@@ -14,7 +14,9 @@ const toTitleCase = (str: string) => {
   });
 };
 
-export default function TaskViewClient({ initialTicket, pics, currentUser }: { initialTicket: any, pics: any[], currentUser: any }) {
+interface TaskViewPerms { canEdit: boolean; canDelete: boolean; canChangeStatus: boolean; canComment: boolean; }
+
+export default function TaskViewClient({ initialTicket, pics, currentUser, perms }: { initialTicket: any, pics: any[], currentUser: any, perms: TaskViewPerms }) {
   const router = useRouter();
   
   const [ticket, setTicket] = useState<any>(initialTicket || {});
@@ -43,9 +45,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
   const pembayaranInitials = ['RIN', 'ETK', 'RKS'];
   const pengadaanInitials = ['GES', 'RAP', 'YNS', 'AND', 'IDH', 'RML', 'HEN', 'MWS'];
 
-  const isHead = ['ABC', 'FER', 'RML', 'RIN'].includes(currentUser?.initial);
-  const safeRole = currentUser?.role?.toUpperCase() || '';
-  const canEdit = safeRole === 'OPERATOR' || safeRole.includes('ADMIN') || isHead;
+  const { canEdit, canDelete, canChangeStatus, canComment } = perms;
 
   const filteredPics = pics?.filter(pic => {
     if (pic.initial === 'ABC') return true;
@@ -68,7 +68,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       const res = await fetch(`/api/tickets/${ticket.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'ADD_COMMENT', message: currentComment, userId: currentUser?.id })
+        body: JSON.stringify({ action: 'ADD_COMMENT', message: currentComment })
       });
       
       if (res.ok) {
@@ -107,7 +107,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       const res = await fetch(`/api/tickets/${ticket.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...editForm, title: titleReal, userId: currentUser?.id })
+        body: JSON.stringify({ ...editForm, title: titleReal })
       });
       const data = await res.json();
       if (data.success) {
@@ -189,7 +189,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
       const res = await fetch(`/api/tickets/${ticket.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'UPDATE_STATUS', status: newStatus, userId: currentUser?.id })
+        body: JSON.stringify({ action: 'UPDATE_STATUS', status: newStatus })
       });
       const data = await res.json();
       if (data.success) {
@@ -309,12 +309,14 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
               )}
             </div>
 
-            <form onSubmit={handleAddComment} className="flex gap-3">
-              <input type="text" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Ketik catatan / update progress di sini..." className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-300" />
-              <button type="submit" disabled={isCommenting || !comment.trim()} className="px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition-colors disabled:opacity-50 text-sm">
-                {isCommenting ? 'Kirim...' : 'Kirim'}
-              </button>
-            </form>
+            {canComment && (
+              <form onSubmit={handleAddComment} className="flex gap-3">
+                <input type="text" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Ketik catatan / update progress di sini..." className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-300" />
+                <button type="submit" disabled={isCommenting || !comment.trim()} className="px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition-colors disabled:opacity-50 text-sm">
+                  {isCommenting ? 'Kirim...' : 'Kirim'}
+                </button>
+              </form>
+            )}
           </div>
 
           {ticket?.issueImgUrl && (
@@ -391,7 +393,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
             </div>
           </div>
 
-          {ticket?.status !== 'DONE' && (currentUser?.id === ticket?.picId || canEdit) && (
+          {ticket?.status !== 'DONE' && canChangeStatus && (
             <div className="bg-slate-50 p-4 rounded-[24px] border border-slate-200/60 shadow-inner flex flex-col gap-3">
               {ticket?.status === 'OPEN' && (
                 <button onClick={() => handleUpdateStatus('IN_PROGRESS')} disabled={isUpdatingStatus} className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-md transition-colors text-sm">
@@ -525,9 +527,11 @@ export default function TaskViewClient({ initialTicket, pics, currentUser }: { i
               </div>
 
               <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
-                <button type="button" onClick={handleDeleteTicket} disabled={isSaving} className="flex items-center gap-1.5 px-4 py-2 text-red-500 font-bold hover:bg-red-100 rounded-xl transition-colors text-xs disabled:opacity-50">
-                  <Trash2 size={14} /> Hapus Tiket
-                </button>
+                {canDelete ? (
+                  <button type="button" onClick={handleDeleteTicket} disabled={isSaving} className="flex items-center gap-1.5 px-4 py-2 text-red-500 font-bold hover:bg-red-100 rounded-xl transition-colors text-xs disabled:opacity-50">
+                    <Trash2 size={14} /> Hapus Tiket
+                  </button>
+                ) : <span />}
                 
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setIsEditOpen(false)} className="px-5 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors text-sm">Batal</button>

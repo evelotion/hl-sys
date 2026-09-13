@@ -21,9 +21,9 @@ interface LeaderboardItem { name: string; count: number; }
 interface MilestoneItem { name: string; initial: string; count: number; }
 
 export default function DashboardClient({
-  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, userRole, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket, topBranches, topRequesters, milestones
+  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, canManageTickets, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket, topBranches, topRequesters, milestones
 }: {
-  totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; userRole: string; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
+  totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; canManageTickets: boolean; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
   criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null; topBranches: LeaderboardItem[]; topRequesters: LeaderboardItem[]; milestones: MilestoneItem[];
 }) {
   const router = useRouter(); 
@@ -558,7 +558,7 @@ export default function DashboardClient({
         </div>
       </div>
 
-      {userRole !== "PIC_LOGISTIK" && (
+      {canManageTickets && (
         <details className="group bg-white rounded-2xl border border-slate-200 shadow-sm marker:content-[''] mt-4">
           <summary className="flex items-center justify-between p-4 md:p-5 cursor-pointer list-none outline-none">
             <div className="flex items-center gap-3"><div className="w-2 h-2 bg-indigo-500 rounded-full"></div><h3 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Detail Beban Kerja PIC</h3></div>
@@ -699,8 +699,8 @@ export default function DashboardClient({
                       </div>
                   </div>
 
-                  {/* JIKA ROLE BUKAN PIC_LOGISTIK (ADMIN / OPERATOR / KABID) */}
-                  {userRole !== 'PIC_LOGISTIK' && (
+                  {/* JIKA ROLE BISA MENGELOLA TIKET (OPERATOR / KEPALA DEPARTEMEN / KEPALA BIDANG) */}
+                  {canManageTickets && (
                     <div className="pt-4 border-t border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tindakan Cepat (Follow Up PIC)</p>
                       <div className="grid grid-cols-2 gap-3">
@@ -720,8 +720,8 @@ export default function DashboardClient({
                     </div>
                   )}
 
-                  {/* JIKA ROLE ADALAH PIC_LOGISTIK */}
-                  {userRole === 'PIC_LOGISTIK' && (
+                  {/* JIKA ROLE TIDAK MENGELOLA TIKET (PIC_LOGISTIK / VIEWER) */}
+                  {!canManageTickets && (
                     <div className="pt-4 border-t border-slate-100">
                       <button 
                         onClick={() => router.push(`/tickets/${selectedUrgentTicket.originalId}`)} // <-- UBAH KE originalId

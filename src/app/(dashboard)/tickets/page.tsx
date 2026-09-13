@@ -1,48 +1,45 @@
-﻿// hl-sys/src/app/(dashboard)/tickets/page.tsx
+// hl-sys/src/app/(dashboard)/tickets/page.tsx
 import React from 'react';
-import { db } from '../../../lib/db'; 
+import { db } from '@/src/lib/db';
 import TicketClient from './TicketClient';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { requireUserForPage } from '@/src/lib/auth';
+import { can, ticketScopeWhere } from '@/src/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
 export default async function TicketsPage() {
-  const cookieStore = await cookies();
-  const sessionStr = cookieStore.get('user_session')?.value;
-  
-  if (!sessionStr) redirect('/login');
-  
-  const user = JSON.parse(sessionStr);
-  
-  // Filter hanya tiket milik PIC bersangkutan (jika dia PIC)
-  const whereClause = user.role === 'PIC_LOGISTIK' ? { picId: user.id } : {};
+  const user = await requireUserForPage();
 
   const ticketsData = await db.ticket.findMany({
-    where: whereClause,
-    include: {
-      pic: true, 
+    where: ticketScopeWhere(user),
+    select: {
+      id: true,
+      ticketNumber: true,
+      category: true,
+      title: true,
+      branchName: true,
+      status: true,
+      createdAt: true,
+      priority: true,
+      pic: { select: { name: true } },
     },
     orderBy: {
       createdAt: 'desc'
     }
   });
 
-  const formattedTickets = ticketsData.map((t: any) => ({
+  const formattedTickets = ticketsData.map((t) => ({
     originalId: t.id,
-    ticketNumber: t.ticketNumber, 
-    category: t.category,         
+    ticketNumber: t.ticketNumber,
+    category: t.category,
     title: t.title,
-    cabang: t.branchName,         
+    cabang: t.branchName,
     pic: t.pic?.name || 'Belum di-assign',
     status: t.status,
-    timestamp: new Date(t.createdAt).getTime(), 
-    
-    // --- UBAH BARIS INI BRO (Tambahin hour & minute) ---
+    timestamp: new Date(t.createdAt).getTime(),
     date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB',
-    
     priority: t.priority
   }));
 
-  return <TicketClient initialTickets={formattedTickets} userRole={user.role} />;
+  return <TicketClient initialTickets={formattedTickets} canCreateTicket={can(user, 'ticket:create')} />;
 }
