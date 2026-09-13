@@ -1,5 +1,6 @@
 // src/app/api/users/[id]/route.ts
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { db } from '@/src/lib/db';
 import { requirePermission, authErrorResponse } from '@/src/lib/auth';
 import { VALID_ROLES, VALID_TEAMS, BIDANG_REQUIRED_ROLES } from '@/src/lib/roles';
@@ -51,6 +52,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   } catch (error) {
     const authResponse = authErrorResponse(error);
     if (authResponse) return authResponse;
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return NextResponse.json({ error: 'Inisial sudah dipakai user lain.' }, { status: 409 });
+    }
     return NextResponse.json({ error: 'Gagal update user' }, { status: 500 });
   }
 }

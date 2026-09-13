@@ -3,7 +3,7 @@ import React from 'react';
 import { Toaster } from 'react-hot-toast';
 import SidebarNav from './SidebarNav';
 import { requireUserForPage } from '@/src/lib/auth';
-import { can } from '@/src/lib/roles';
+import { can, ROLES } from '@/src/lib/roles';
 
 export default async function DashboardLayout({
   children,
@@ -24,6 +24,11 @@ export default async function DashboardLayout({
 
       {/* Bagian <main> ini yang akan mengambil sisa ruang dan punya scroll sendiri (overflow-y-auto) */}
       <main className="flex-1 w-full max-w-full p-4 md:p-10 overflow-y-auto pb-28 md:pb-10 relative">
+        {user.role === ROLES.VIEWER && (
+          <div className="mb-4 px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold rounded-xl text-center">
+            Anda masuk sebagai Akun Pemantau. Data hanya bisa dilihat.
+          </div>
+        )}
         {children}
       </main>
 

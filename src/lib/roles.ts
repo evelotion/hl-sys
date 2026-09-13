@@ -27,10 +27,14 @@ export const ASSIGNABLE_ROLES: readonly string[] = [ROLES.OPERATOR, ROLES.KEPALA
 // Role yang wajib punya bidang eksplisit (bukan default diam-diam) saat dibuat/diedit lewat /users.
 export const BIDANG_REQUIRED_ROLES: readonly string[] = [ROLES.KEPALA_BIDANG, ROLES.PIC_LOGISTIK];
 
-// Role yang boleh melihat SLA, kontak PIC/pemohon, export report, dan ganti password sendiri.
-// Daftar putih eksplisit (bukan "role !== VIEWER") supaya role yang tidak dikenal/tidak valid
-// ditolak, bukan otomatis diloloskan.
-const SLA_CONTACT_EXPORT_PASSWORD_ROLES: readonly string[] = [
+// Role yang boleh melihat SLA, kontak PIC/pemohon, dan export report. Daftar putih eksplisit
+// (bukan "role !== VIEWER") supaya role yang tidak dikenal/tidak valid ditolak, bukan otomatis
+// diloloskan. VIEWER SENGAJA tidak termasuk -- lihat aturan keras 0.2.1 blueprint.
+//
+// password:change TIDAK memakai daftar ini (lihat case terpisah di bawah): sejak Fase 6, VIEWER
+// dianggap staf administratif dengan akun pribadi (bukan akun bersama lagi), jadi boleh ganti
+// password sendiri walau tidak boleh melihat SLA/kontak/export.
+const SLA_CONTACT_EXPORT_ROLES: readonly string[] = [
   ROLES.OPERATOR,
   ROLES.KEPALA_DEPARTEMEN,
   ROLES.KEPALA_BIDANG,
@@ -144,8 +148,13 @@ export function can(
     case 'sla:view':
     case 'contact:view':
     case 'report:export':
+      return SLA_CONTACT_EXPORT_ROLES.includes(role);
+
     case 'password:change':
-      return SLA_CONTACT_EXPORT_PASSWORD_ROLES.includes(role);
+      // Semua role valid boleh ganti password sendiri (termasuk VIEWER sejak Fase 6). Tetap
+      // daftar putih eksplisit (VALID_ROLES), bukan `true` polos, supaya role tidak dikenal
+      // tetap ditolak.
+      return VALID_ROLES.includes(role);
 
     case 'team:oversee':
       return role === ROLES.KEPALA_DEPARTEMEN || role === ROLES.KEPALA_BIDANG;

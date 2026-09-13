@@ -23,7 +23,7 @@ const FilterButton = ({ label, value, currentFilter, onSelect }: { label: string
   );
 };
 
-export default function TicketClient({ initialTickets, canCreateTicket }: { initialTickets: any[]; canCreateTicket: boolean; }) {
+export default function TicketClient({ initialTickets, canCreateTicket, canSeeSla }: { initialTickets: any[]; canCreateTicket: boolean; canSeeSla: boolean; }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -179,7 +179,7 @@ export default function TicketClient({ initialTickets, canCreateTicket }: { init
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-[10px] font-black text-indigo-600">{ticket.ticketNumber}</p>
-                      {getPriorityBadge(ticket.priority)}
+                      {canSeeSla && getPriorityBadge(ticket.priority)}
                     </div>
                     {/* CSS UPPERCASE DITAMBAHKAN DI SINI UNTUK MOBILE */}
                     <h3 className="text-sm font-bold text-slate-800 line-clamp-2 leading-tight uppercase">{ticket.title}</h3>
@@ -206,7 +206,7 @@ export default function TicketClient({ initialTickets, canCreateTicket }: { init
                 <tr className="bg-slate-50/40 border-b border-slate-200/40">
                   {[
                     { label: 'ID Tiket', key: 'ticketNumber' },
-                    { label: 'Prioritas', key: 'priority' }, 
+                    ...(canSeeSla ? [{ label: 'Prioritas', key: 'priority' }] : []),
                     { label: 'Kategori', key: 'category' },
                     { label: 'Detail Masalah', key: 'title' },
                     { label: 'Cabang', key: 'cabang' },
@@ -243,9 +243,11 @@ export default function TicketClient({ initialTickets, canCreateTicket }: { init
                       className="border-b border-slate-100/50 hover:bg-slate-50/50 hover:shadow-[0_4px_15px_rgb(0,0,0,0.02)] transition-all duration-200 cursor-pointer group"
                     >
                       <td className="px-6 py-4 font-semibold text-indigo-600 text-xs whitespace-nowrap">{ticket.ticketNumber}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getPriorityBadge(ticket.priority)}
-                      </td>
+                      {canSeeSla && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getPriorityBadge(ticket.priority)}
+                        </td>
+                      )}
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-slate-500 rounded-md text-[10px] font-semibold border border-slate-200/60 shadow-sm whitespace-nowrap"><Tags size={10} /> {ticket.category}</span>
                       </td>

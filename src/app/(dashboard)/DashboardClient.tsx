@@ -28,9 +28,9 @@ interface PICWorkloadData { name: string; initial: string; activeTasks: number; 
 interface PICWorkloadGroup { P3: PICWorkloadData[]; Pengadaan: PICWorkloadData[]; Pembayaran: PICWorkloadData[]; Lainnya: PICWorkloadData[]; }
 
 interface TicketData {
-  id: string; 
+  id: string;
   originalId?: string; // <-- TAMBAHAN BARU
-  status: string; progress: number; sla: number; pic: string;
+  status: string; progress: number; sla?: number; pic: string;
   picName?: string; picPhone?: string; picEmail?: string; priority?: string;
   title?: string; category?: string; cabang?: string; date?: string;
 }
@@ -39,11 +39,11 @@ interface LeaderboardItem { name: string; count: number; }
 interface MilestoneItem { name: string; initial: string; count: number; }
 
 export default function DashboardClient({
-  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, canManageTickets, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket, topBranches, topRequesters, milestones, bidangBreakdown, canDrilldownBidang, teamOversight
+  totalRequest, requestCount, onProgress, completed, slaOnTime, picWorkload, canManageTickets, recentTickets, userName, urgentTicket, criticalTickets, latestTickets, newestTicket, topBranches, topRequesters, milestones, bidangBreakdown, canDrilldownBidang, teamOversight, canSeeSla
 }: {
   totalRequest: number; requestCount: number; onProgress: number; completed: number; slaOnTime: number; picWorkload: PICWorkloadGroup; canManageTickets: boolean; recentTickets: TicketData[]; userName: string; urgentTicket?: TicketData | null;
   criticalTickets: TicketData[]; latestTickets: TicketData[]; newestTicket?: TicketData | null; topBranches: LeaderboardItem[]; topRequesters: LeaderboardItem[]; milestones: MilestoneItem[];
-  bidangBreakdown: BidangBreakdown; canDrilldownBidang: boolean; teamOversight: TeamOversightData | null;
+  bidangBreakdown: BidangBreakdown; canDrilldownBidang: boolean; teamOversight: TeamOversightData | null; canSeeSla: boolean;
 }) {
   const router = useRouter(); 
 
@@ -343,7 +343,7 @@ export default function DashboardClient({
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <div className={`grid grid-cols-2 gap-3 md:gap-4 ${canSeeSla ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
         <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div className="flex items-center gap-2 text-slate-500 mb-3"><FileText size={18} className="text-indigo-500" /><span className="text-[10px] font-bold uppercase tracking-wider">Total Request</span></div>
           <div><p className="text-3xl md:text-4xl font-black text-slate-800">{totalRequest}</p></div>
@@ -356,10 +356,12 @@ export default function DashboardClient({
           <div className="flex items-center gap-2 text-slate-500 mb-3"><CheckCircle2 size={18} className="text-emerald-500" /><span className="text-[10px] font-bold uppercase tracking-wider">Completed</span></div>
           <div><p className="text-3xl md:text-4xl font-black text-slate-800">{completed}</p></div>
         </div>
-        <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-slate-500 mb-3"><Timer size={18} className="text-indigo-600" /><span className="text-[10px] font-bold uppercase tracking-wider">SLA On Time</span></div>
-          <div><p className="text-3xl md:text-4xl font-black text-slate-800">{slaOnTime}%</p></div>
-        </div>
+        {canSeeSla && (
+          <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center gap-2 text-slate-500 mb-3"><Timer size={18} className="text-indigo-600" /><span className="text-[10px] font-bold uppercase tracking-wider">SLA On Time</span></div>
+            <div><p className="text-3xl md:text-4xl font-black text-slate-800">{slaOnTime}%</p></div>
+          </div>
+        )}
       </div>
 
       {teamOversight && (
@@ -431,7 +433,7 @@ export default function DashboardClient({
                 <tr>
                   <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">No. Request</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status Progress</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">SLA Timeline</th>
+                  {canSeeSla && <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">SLA Timeline</th>}
                   <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">PIC Assignment</th>
                 </tr>
               </thead>
@@ -448,14 +450,16 @@ export default function DashboardClient({
                         <span className="text-[10px] font-bold text-slate-500 w-8">{ticket.progress}%</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3 w-full">
-                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${ticket.sla}%` }} transition={{ duration: 1, delay: 0.2 }} className={`h-full rounded-full ${ticket.sla === 100 && ticket.status !== "COMPLETED" ? "bg-red-500" : "bg-indigo-500"}`}></motion.div>
+                    {canSeeSla && (
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3 w-full">
+                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <motion.div initial={{ width: 0 }} animate={{ width: `${ticket.sla}%` }} transition={{ duration: 1, delay: 0.2 }} className={`h-full rounded-full ${ticket.sla === 100 && ticket.status !== "COMPLETED" ? "bg-red-500" : "bg-indigo-500"}`}></motion.div>
+                          </div>
+                          <span className={`text-[10px] font-bold w-8 ${ticket.sla === 100 && ticket.status !== "COMPLETED" ? "text-red-500" : "text-slate-500"}`}>{ticket.sla}%</span>
                         </div>
-                        <span className={`text-[10px] font-bold w-8 ${ticket.sla === 100 && ticket.status !== "COMPLETED" ? "text-red-500" : "text-slate-500"}`}>{ticket.sla}%</span>
-                      </div>
-                    </td>
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <span className="text-xs font-bold text-slate-600">PIC {ticket.pic}</span>
@@ -465,7 +469,7 @@ export default function DashboardClient({
                   </tr>
                 ))}
                 {recentTickets.length === 0 && (
-                  <tr><td colSpan={4} className="text-center p-8 text-slate-400 font-medium text-xs">Belum ada tugas aktif (In Progress)</td></tr>
+                  <tr><td colSpan={canSeeSla ? 4 : 3} className="text-center p-8 text-slate-400 font-medium text-xs">Belum ada tugas aktif (In Progress)</td></tr>
                 )}
               </tbody>
             </table>
@@ -473,9 +477,10 @@ export default function DashboardClient({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${canSeeSla ? 'lg:grid-cols-2' : ''}`}>
         <div className="flex flex-col gap-4">
-          
+
+          {canSeeSla && (
           <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-sm flex flex-col min-h-[220px] relative">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500 rounded-l-2xl"></div>
             <div className="flex items-center justify-between mb-3 pl-2">
@@ -487,7 +492,7 @@ export default function DashboardClient({
                   </button>
                 )}
               </div>
-              {urgentTicket && urgentTicket.sla >= 80 && (
+              {urgentTicket && (urgentTicket.sla ?? 0) >= 80 && (
                 <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
@@ -514,7 +519,7 @@ export default function DashboardClient({
                       <span className={`px-1.5 py-0.5 text-[8px] font-black rounded-md border ${getStatusColor(urgentTicket.status)}`}>{urgentTicket.status}</span>
                     </div>
                     <div className="w-full h-1.5 bg-red-100 rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(urgentTicket.sla, 100)}%` }} className={`h-full ${urgentTicket.sla >= 80 ? "bg-red-500" : "bg-red-400"}`}></motion.div>
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(urgentTicket.sla ?? 0, 100)}%` }} className={`h-full ${(urgentTicket.sla ?? 0) >= 80 ? "bg-red-500" : "bg-red-400"}`}></motion.div>
                     </div>
                   </div>
                 </div>
@@ -525,6 +530,7 @@ export default function DashboardClient({
               </div>
             )}
           </div>
+          )}
 
           <div className="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm flex flex-col min-h-[220px] relative">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 rounded-l-2xl"></div>
@@ -775,13 +781,17 @@ export default function DashboardClient({
                   </div>
                   
                   <div className="pt-4 border-t border-slate-100">
-                      <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs font-bold text-slate-500">Timeline SLA (Tenggat): <span className={`${selectedUrgentTicket.sla >= 80 ? 'text-red-600' : 'text-indigo-600'} font-black`}>{selectedUrgentTicket.sla}% Berjalan</span></span>
-                      </div>
-                      <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden relative mb-4">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(selectedUrgentTicket.sla, 100)}%` }} className={`absolute top-0 left-0 h-full ${selectedUrgentTicket.sla >= 80 ? 'bg-red-500' : 'bg-indigo-500'}`}></motion.div>
-                      </div>
-                      
+                      {canSeeSla && (
+                        <>
+                          <div className="flex justify-between items-center mb-2">
+                              <span className="text-xs font-bold text-slate-500">Timeline SLA (Tenggat): <span className={`${(selectedUrgentTicket.sla ?? 0) >= 80 ? 'text-red-600' : 'text-indigo-600'} font-black`}>{selectedUrgentTicket.sla}% Berjalan</span></span>
+                          </div>
+                          <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden relative mb-4">
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(selectedUrgentTicket.sla ?? 0, 100)}%` }} className={`absolute top-0 left-0 h-full ${(selectedUrgentTicket.sla ?? 0) >= 80 ? 'bg-red-500' : 'bg-indigo-500'}`}></motion.div>
+                          </div>
+                        </>
+                      )}
+
                       <div className="flex justify-between items-center mb-2">
                           <span className="text-xs font-bold text-slate-500">Progress Pengerjaan: <span className="text-slate-700 font-black">{selectedUrgentTicket.progress}%</span></span>
                           <span className={`px-2 py-1 text-[10px] font-black rounded-md border ${getStatusColor(selectedUrgentTicket.status)}`}>{selectedUrgentTicket.status}</span>

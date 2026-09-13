@@ -5,6 +5,7 @@ import TaskViewClient from './TaskViewClient';
 import { notFound } from 'next/navigation';
 import { requireUserForPage } from '@/src/lib/auth';
 import { can, ASSIGNABLE_ROLES } from '@/src/lib/roles';
+import { toTicketDTO } from '@/src/lib/ticketDto';
 
 export default async function TaskViewPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -36,6 +37,8 @@ export default async function TaskViewPage({ params }: { params: Promise<{ id: s
     canDelete: can(currentUser, 'ticket:delete', ticketCtx),
     canChangeStatus: can(currentUser, 'ticket:status', ticketCtx),
     canComment: can(currentUser, 'ticket:comment', ticketCtx),
+    canSeeSla: can(currentUser, 'sla:view'),
+    canSeeContact: can(currentUser, 'contact:view'),
   };
 
   const pics = await db.user.findMany({
@@ -44,9 +47,11 @@ export default async function TaskViewPage({ params }: { params: Promise<{ id: s
     orderBy: { name: 'asc' }
   });
 
+  const ticketDto = toTicketDTO(ticket, { canSeeSla: perms.canSeeSla, canSeeContact: perms.canSeeContact });
+
   return (
     <TaskViewClient
-      initialTicket={ticket}
+      initialTicket={ticketDto}
       pics={pics}
       currentUser={currentUser}
       perms={perms}

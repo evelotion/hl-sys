@@ -15,7 +15,7 @@ const toTitleCase = (str: string) => {
   });
 };
 
-interface TaskViewPerms { canEdit: boolean; canDelete: boolean; canChangeStatus: boolean; canComment: boolean; }
+interface TaskViewPerms { canEdit: boolean; canDelete: boolean; canChangeStatus: boolean; canComment: boolean; canSeeSla: boolean; canSeeContact: boolean; }
 
 export default function TaskViewClient({ initialTicket, pics, currentUser, perms }: { initialTicket: any, pics: any[], currentUser: any, perms: TaskViewPerms }) {
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser, perms
     issueImgUrl: ticket?.issueImgUrl || ''
   });
 
-  const { canEdit, canDelete, canChangeStatus, canComment } = perms;
+  const { canEdit, canDelete, canChangeStatus, canComment, canSeeSla } = perms;
 
   const filteredPics = pics?.filter(pic => {
     if (pic.role === ROLES.OPERATOR) return true;
@@ -258,9 +258,9 @@ export default function TaskViewClient({ initialTicket, pics, currentUser, perms
             <div className="flex flex-wrap items-center gap-3 mb-6">
               <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-100">{ticket?.ticketNumber}</span>
               
-              {ticket?.priority === 'URGENT' && <span className="px-3 py-1 bg-red-50 text-red-600 text-xs font-black rounded-lg border border-red-100 shadow-sm tracking-wider">🚨 URGENT</span>}
-              {ticket?.priority === 'MEDIUM' && <span className="px-3 py-1 bg-amber-50 text-amber-600 text-xs font-black rounded-lg border border-amber-100 shadow-sm tracking-wider">⚡ MEDIUM</span>}
-              {ticket?.priority === 'LOW' && <span className="px-3 py-1 bg-slate-50 text-slate-500 text-xs font-black rounded-lg border border-slate-200 shadow-sm tracking-wider">🟢 LOW</span>}
+              {canSeeSla && ticket?.priority === 'URGENT' && <span className="px-3 py-1 bg-red-50 text-red-600 text-xs font-black rounded-lg border border-red-100 shadow-sm tracking-wider">🚨 URGENT</span>}
+              {canSeeSla && ticket?.priority === 'MEDIUM' && <span className="px-3 py-1 bg-amber-50 text-amber-600 text-xs font-black rounded-lg border border-amber-100 shadow-sm tracking-wider">⚡ MEDIUM</span>}
+              {canSeeSla && ticket?.priority === 'LOW' && <span className="px-3 py-1 bg-slate-50 text-slate-500 text-xs font-black rounded-lg border border-slate-200 shadow-sm tracking-wider">🟢 LOW</span>}
 
               <span className="px-3 py-1 bg-slate-50 text-slate-600 text-xs font-bold rounded-lg border border-slate-200">{ticket?.category}</span>
               <span className={`px-3 py-1 text-xs font-bold rounded-lg border ${
@@ -367,20 +367,24 @@ export default function TaskViewClient({ initialTicket, pics, currentUser, perms
             </div>
             
             <div className="pt-4 border-t border-slate-100">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Timeline & SLA</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">{canSeeSla ? 'Timeline & SLA' : 'Timeline'}</p>
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm">
                   <Calendar size={16} className="text-slate-400" />
                   <span className="text-slate-600 font-medium">Tgl Request: <b className="text-slate-800">{formatDate(ticket?.requestDate)}</b></span>
                 </div>
-                <div className="flex items-center gap-3 text-sm">
-                  <Clock size={16} className={isOverdue ? 'text-red-500' : 'text-amber-500'} />
-                  <span className="text-slate-600 font-medium">SLA Deadline: <b className={isOverdue ? 'text-red-600' : 'text-slate-800'}>{formatDate(ticket?.slaDeadline)}</b></span>
-                </div>
-                {isOverdue && (
-                  <div className="bg-red-50 text-red-600 p-2 rounded-lg text-[10px] font-bold flex items-center gap-1.5 border border-red-100">
-                    <AlertCircle size={14}/> Melewati Target SLA!
-                  </div>
+                {canSeeSla && (
+                  <>
+                    <div className="flex items-center gap-3 text-sm">
+                      <Clock size={16} className={isOverdue ? 'text-red-500' : 'text-amber-500'} />
+                      <span className="text-slate-600 font-medium">SLA Deadline: <b className={isOverdue ? 'text-red-600' : 'text-slate-800'}>{formatDate(ticket?.slaDeadline)}</b></span>
+                    </div>
+                    {isOverdue && (
+                      <div className="bg-red-50 text-red-600 p-2 rounded-lg text-[10px] font-bold flex items-center gap-1.5 border border-red-100">
+                        <AlertCircle size={14}/> Melewati Target SLA!
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

@@ -42,34 +42,40 @@ export default function UserClient({ initialUsers }: { initialUsers: any[] }) {
       const isEdit = !!formData.id;
       const url = isEdit ? `/api/users/${formData.id}` : `/api/users`;
       const method = isEdit ? 'PATCH' : 'POST';
-      
+
       const { id, ...payloadWithoutId } = formData;
-      const finalPayload = isEdit ? formData : payloadWithoutId;
+      const finalPayload: Record<string, unknown> = isEdit ? { ...formData } : payloadWithoutId;
+
+      // VIEWER tidak butuh bidang -- jangan kirim team sama sekali (bukan string kosong),
+      // supaya server tidak menganggapnya sebagai nilai bidang yang dikirim tapi tidak valid.
+      if (formData.role === ROLES.VIEWER) {
+        delete finalPayload.team;
+      }
 
       const res = await fetch(url, {
-        method, 
-        headers: { 'Content-Type': 'application/json' }, 
+        method,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(finalPayload)
       });
-      
+
       // KITA TANGKAP BALIKAN DATA DARI API
       const data = await res.json();
-      
+
       if (res.ok && data.success) {
         toast.success(isEdit ? 'Data User Diperbarui!' : 'User Baru Ditambahkan!');
         setIsModalOpen(false);
-        
+
         // --- OPTIMISTIC UPDATE: Langsung update tabel lokal tanpa refresh ---
         if (isEdit) {
           setUsers(users.map(u => u.id === formData.id ? data.user : u));
         } else {
           setUsers([...users, data.user]);
         }
-        
+
         // Cukup suruh Next.js sync background, tanpa reload browser
         router.refresh();
       } else {
-        toast.error('Inisial mungkin sudah dipakai atau terjadi kesalahan.');
+        toast.error(data.error || 'Gagal menyimpan data user.');
       }
     } catch (error) {
       toast.error('Terjadi kesalahan sistem.');

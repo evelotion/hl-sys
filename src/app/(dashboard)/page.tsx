@@ -25,37 +25,44 @@ export default async function DashboardPage() {
     ? { backlog: await getTeamBacklog(user), sessionSid: user.sid }
     : null;
 
+  // Fase 6: dihitung sekali, dipakai untuk melewati (bukan cuma menyaring hasil) query-query
+  // SLA sepenuhnya kalau role tidak berhak melihat SLA (VIEWER).
+  const canSeeSla = can(user, 'sla:view');
+  const canSeeContact = can(user, 'contact:view');
+  const ticketDtoPerms = { canSeeSla, canSeeContact };
+
   // 1. KPI Metrik
   const totalRequest = await db.ticket.count({ where: whereBase });
   const requestCount = await db.ticket.count({ where: { ...whereBase, status: 'OPEN' } });
   const onProgress = await db.ticket.count({ where: { ...whereBase, status: 'IN_PROGRESS' } });
   const completed = await db.ticket.count({ where: { ...whereBase, status: 'DONE' } });
 
-  // 2. SLA Tracking
-  const allTicketsForSLA = await db.ticket.findMany({
-    where: whereBase,
-    select: { createdAt: true, resolvedAt: true, slaDeadline: true, status: true }
-  });
-
-  let slaOnTimePercentage = 100;
-  if (totalRequest > 0) {
-    const now = new Date();
-    let overdueCount = 0;
-    
-    allTicketsForSLA.forEach(t => {
-      if (t.slaDeadline) {
-        if (t.status === 'DONE' && t.resolvedAt && t.resolvedAt > t.slaDeadline) {
-          overdueCount++;
-        } else if (t.status !== 'DONE' && now > t.slaDeadline) {
-          overdueCount++;
-        }
-      }
+  // 2. SLA Tracking -- query & perhitungan dilewati SEPENUHNYA kalau !canSeeSla, bukan
+  // dihitung lalu disembunyikan.
+  let slaOnTimePercentage = 0;
+  if (canSeeSla) {
+    const allTicketsForSLA = await db.ticket.findMany({
+      where: whereBase,
+      select: { createdAt: true, resolvedAt: true, slaDeadline: true, status: true }
     });
 
-    const onTimeCount = totalRequest - overdueCount;
-    slaOnTimePercentage = Math.round((onTimeCount / totalRequest) * 100);
-  } else {
-    slaOnTimePercentage = 0;
+    if (totalRequest > 0) {
+      const now = new Date();
+      let overdueCount = 0;
+
+      allTicketsForSLA.forEach(t => {
+        if (t.slaDeadline) {
+          if (t.status === 'DONE' && t.resolvedAt && t.resolvedAt > t.slaDeadline) {
+            overdueCount++;
+          } else if (t.status !== 'DONE' && now > t.slaDeadline) {
+            overdueCount++;
+          }
+        }
+      });
+
+      const onTimeCount = totalRequest - overdueCount;
+      slaOnTimePercentage = Math.round((onTimeCount / totalRequest) * 100);
+    }
   }
 
   // 3. Beban Kerja PIC & LOGIKA MILESTONE APRESIASI
@@ -109,40 +116,54 @@ export default async function DashboardPage() {
     checkMilestone(10);
   });
 
-  const formatTicketData = (t: any) => {
-    let progress = 25; 
+  // Fase 6: key sla/priority/picPhone/picEmail SENGAJA tidak ditulis sama sekali (bukan
+  // didefault-kan) kalau perms tidak mengizinkan -- supaya key-nya benar-benar tidak ada di
+  // payload RSC yang dikirim ke client untuk role yang tidak berhak (VIEWER).
+  const formatTicketData = (t: any, perms: { canSeeSla: boolean; canSeeContact: boolean }) => {
+    let progress = 25;
     if (t.status === 'IN_PROGRESS') progress = 65;
     if (t.status === 'DONE') progress = 100;
 
-    let sla = 0;
-    if (t.slaDeadline && t.createdAt) {
-       const totalSlaBusinessMinutes = getBusinessMinutesBetween(new Date(t.createdAt), new Date(t.slaDeadline));
-       const endTime = t.resolvedAt ? new Date(t.resolvedAt) : new Date();
-       const businessMinutesElapsed = getBusinessMinutesBetween(new Date(t.createdAt), endTime);
-       
-       if (totalSlaBusinessMinutes > 0) {
-         sla = Math.round((businessMinutesElapsed / totalSlaBusinessMinutes) * 100);
-       }
-       if (sla > 100) sla = 100; 
-       if (sla < 0) sla = 0;
-    }
-
-    return {
+    const base: {
+      id: string; originalId: string; status: string; progress: number; pic: string; picName: string;
+      title: string; category: string; cabang: string; date: string;
+      sla?: number; priority?: string; picPhone?: string; picEmail?: string;
+    } = {
       id: t.ticketNumber,
       originalId: t.id, // <-- INI YANG PENTING UNTUK ROUTING KE DETAIL TIKET
       status: t.status === 'IN_PROGRESS' ? 'ON PROGRESS' : (t.status === 'DONE' ? 'COMPLETED' : 'REQUEST'),
       progress: progress,
-      sla: sla,
       pic: t.pic?.initial || 'N/A',
       picName: t.pic?.name || 'PIC',
-      picPhone: t.pic?.phone || '',
-      picEmail: t.pic?.email || '',
       title: t.title,
       category: t.category,
-      priority: t.priority || 'MEDIUM',
       cabang: t.branchName,
       date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' WIB'
     };
+
+    if (perms.canSeeSla) {
+      let sla = 0;
+      if (t.slaDeadline && t.createdAt) {
+         const totalSlaBusinessMinutes = getBusinessMinutesBetween(new Date(t.createdAt), new Date(t.slaDeadline));
+         const endTime = t.resolvedAt ? new Date(t.resolvedAt) : new Date();
+         const businessMinutesElapsed = getBusinessMinutesBetween(new Date(t.createdAt), endTime);
+
+         if (totalSlaBusinessMinutes > 0) {
+           sla = Math.round((businessMinutesElapsed / totalSlaBusinessMinutes) * 100);
+         }
+         if (sla > 100) sla = 100;
+         if (sla < 0) sla = 0;
+      }
+      base.sla = sla;
+      base.priority = t.priority || 'MEDIUM';
+    }
+
+    if (perms.canSeeContact) {
+      base.picPhone = t.pic?.phone || '';
+      base.picEmail = t.pic?.email || '';
+    }
+
+    return base;
   };
 
   const ticketListSelect = {
@@ -151,15 +172,22 @@ export default async function DashboardPage() {
     pic: { select: { initial: true, name: true, phone: true, email: true } },
   } as const;
 
-  const activeSlaTickets = await db.ticket.findMany({
-    where: { ...whereBase, status: { not: 'DONE' }, slaDeadline: { not: null } },
-    orderBy: { slaDeadline: 'asc' },
-    select: ticketListSelect
-  });
+  // "SLA Kritis" dilewati sepenuhnya (query TIDAK dijalankan) kalau !canSeeSla -- bukan
+  // dihitung lalu disaring/disembunyikan. Urutan berdasarkan slaDeadline pun tidak pernah
+  // dihitung untuk role yang tidak berhak melihat SLA.
+  let urgentTicket: ReturnType<typeof formatTicketData> | null = null;
+  let criticalTickets: ReturnType<typeof formatTicketData>[] = [];
+  if (canSeeSla) {
+    const activeSlaTickets = await db.ticket.findMany({
+      where: { ...whereBase, status: { not: 'DONE' }, slaDeadline: { not: null } },
+      orderBy: { slaDeadline: 'asc' },
+      select: ticketListSelect
+    });
 
-  const formattedActiveSla = activeSlaTickets.map(formatTicketData);
-  const urgentTicket = formattedActiveSla.length > 0 ? formattedActiveSla[0] : null;
-  const criticalTickets = formattedActiveSla.filter(t => t.sla >= 80);
+    const formattedActiveSla = activeSlaTickets.map(t => formatTicketData(t, ticketDtoPerms));
+    urgentTicket = formattedActiveSla.length > 0 ? formattedActiveSla[0] : null;
+    criticalTickets = formattedActiveSla.filter(t => (t.sla ?? 0) >= 80);
+  }
 
   const recentData = await db.ticket.findMany({
     where: { ...whereBase, status: 'IN_PROGRESS' },
@@ -167,7 +195,7 @@ export default async function DashboardPage() {
     take: 15,
     select: ticketListSelect
   });
-  const recentTickets = recentData.map(formatTicketData);
+  const recentTickets = recentData.map(t => formatTicketData(t, ticketDtoPerms));
 
   const latestTicketsData = await db.ticket.findMany({
     where: whereBase,
@@ -175,7 +203,7 @@ export default async function DashboardPage() {
     take: 10,
     select: ticketListSelect
   });
-  const latestTickets = latestTicketsData.map(formatTicketData);
+  const latestTickets = latestTicketsData.map(t => formatTicketData(t, ticketDtoPerms));
   const newestTicket = latestTickets.length > 0 ? latestTickets[0] : null;
 
   const topBranchesData = await db.ticket.groupBy({
@@ -217,6 +245,7 @@ export default async function DashboardPage() {
       bidangBreakdown={bidangBreakdown}
       canDrilldownBidang={canDrilldownBidang}
       teamOversight={teamOversight}
+      canSeeSla={canSeeSla}
     />
   );
 }

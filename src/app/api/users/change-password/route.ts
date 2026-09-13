@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { db } from '@/src/lib/db';
 import bcrypt from 'bcryptjs';
 import { getCurrentUser } from '@/src/lib/auth';
+import { can } from '@/src/lib/roles';
 import { createSessionPayload, signSession, sessionMaxAgeSeconds, SESSION_COOKIE_NAME } from '@/src/lib/session';
 
 export async function POST(request: Request) {
@@ -15,8 +16,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Sesi telah berakhir. Silakan login ulang.' }, { status: 401 });
     }
 
-    if (sessionUser.role === 'VIEWER') {
-      return NextResponse.json({ success: false, error: 'Akun Pemantau tidak dapat mengubah password.' }, { status: 403 });
+    if (!can(sessionUser, 'password:change')) {
+      return NextResponse.json({ success: false, error: 'Anda tidak memiliki izin untuk mengubah password.' }, { status: 403 });
     }
 
     if (typeof newPassword !== 'string' || newPassword.length < 8) {
