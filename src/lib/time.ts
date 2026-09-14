@@ -25,3 +25,12 @@ export function startOfWibYear(d: Date): Date {
   s.setUTCHours(0, 0, 0, 0);
   return new Date(s.getTime() - WIB_OFFSET_MS);
 }
+
+// Selisih hari kalender WIB antara dua tanggal (berbasis wibDayKey, bukan selisih
+// milidetik dibagi 86400000), supaya tidak meleset karena jam. Dipakai untuk umur
+// tiket di slide "Tiket terlama" Mode TV.
+export function wibDayDiff(from: Date, to: Date): number {
+  const a = new Date(`${wibDayKey(from)}T00:00:00Z`).getTime();
+  const b = new Date(`${wibDayKey(to)}T00:00:00Z`).getTime();
+  return Math.round((b - a) / (24 * 60 * 60 * 1000));
+}

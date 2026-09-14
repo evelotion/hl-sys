@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, LogOut, Maximize, Minimize, Package, Pause, Play, WifiOff } from 'lucide-react';
 import type { TvData, TvTicketStatus } from '@/src/lib/tvStats';
-import { wibDayKey as wibKey } from '@/src/lib/time';
+import { wibDayDiff, wibDayKey as wibKey } from '@/src/lib/time';
 
 /* ============================================================
    KONFIGURASI
@@ -27,15 +27,16 @@ const BRAND = {
   glow: '#FFE600',   // Morning Glow
   base: '#00355F',   // Deep Horizon digelapkan untuk latar TV
   ink: '#002A4C',
+  danger: '#FF6B6B', // Bukan warna resmi brand -- aksen merah untuk umur tiket kritis, dipilih agar tetap terbaca (teks gelap di atasnya, kontras terhadap latar #00355F)
 };
 
-type SlideKey = 'ringkasan' | 'cabang' | 'terbaru' | 'staf' | 'selamat';
+type SlideKey = 'ringkasan' | 'cabang' | 'terbaru' | 'terlama' | 'selamat';
 
 const SLIDES: Record<SlideKey, { title: string; short: string; duration: number }> = {
   ringkasan: { title: 'Ringkasan tiket', short: 'Ringkasan', duration: 20_000 },
   cabang: { title: 'Cabang & unit kerja teraktif', short: 'Cabang & unit', duration: 15_000 },
   terbaru: { title: 'Tiket terbaru', short: 'Tiket terbaru', duration: 15_000 },
-  staf: { title: 'Staf terbanyak menyelesaikan tiket', short: 'Staf terbaik', duration: 15_000 },
+  terlama: { title: 'Tiket terlama belum selesai', short: 'Tiket terlama', duration: 15_000 },
   selamat: { title: 'Apresiasi pencapaian', short: 'Apresiasi', duration: 15_000 },
 };
 
@@ -123,7 +124,7 @@ export default function TvDisplayClient({ initialData }: { initialData: TvData |
   // hasMilestones tidak berubah, dipakai sebagai dependency stabil oleh `go` di bawah.
   const hasMilestones = (data?.milestones.length ?? 0) > 0;
   const slides: SlideKey[] = useMemo(
-    () => (hasMilestones ? ['ringkasan', 'cabang', 'terbaru', 'staf', 'selamat'] : ['ringkasan', 'cabang', 'terbaru', 'staf']),
+    () => (hasMilestones ? ['ringkasan', 'cabang', 'terbaru', 'terlama', 'selamat'] : ['ringkasan', 'cabang', 'terbaru', 'terlama']),
     [hasMilestones]
   );
   const slideIndex = pos.index % slides.length;
@@ -319,7 +320,7 @@ export default function TvDisplayClient({ initialData }: { initialData: TvData |
                 {current === 'ringkasan' && <SlideRingkasan data={data} />}
                 {current === 'cabang' && <SlideCabang data={data} />}
                 {current === 'terbaru' && <SlideTerbaru data={data} now={now} />}
-                {current === 'staf' && <SlideStaf data={data} />}
+                {current === 'terlama' && <SlideTerlama data={data} now={now} />}
                 {current === 'selamat' && <SlideSelamat data={data} now={now} />}
               </motion.div>
             </AnimatePresence>
@@ -376,8 +377,8 @@ function subtitleFor(slide: SlideKey, data: TvData | null, now: Date | null): st
       return `${data.periodLabel}, dari ${data.branchCount} cabang dan unit kerja yang mengajukan tiket`;
     case 'terbaru':
       return `${data.latest.length} tiket yang paling baru masuk`;
-    case 'staf':
-      return `Tiket selesai selama ${data.periodLabel}`;
+    case 'terlama':
+      return `${data.oldest.length} tiket yang paling lama menunggu penyelesaian`;
     case 'selamat':
       return 'Staf yang baru mencapai target total tiket selesai';
   }
@@ -695,6 +696,13 @@ function StatusPill({ status }: { status: TvTicketStatus }) {
   );
 }
 
+const TICKET_ROW_H = 115; // tinggi baris tabel tiket (Terbaru & Terlama) -- muat Perihal 2 baris @26px
+
+// Ambang umur tiket untuk penanda visual di slide "Tiket terlama". Ini murni umur
+// tiket sejak dibuat (hari kalender WIB), BUKAN status atau deadline SLA.
+const AGE_CRITICAL_DAYS = 30; // >= ini: pil merah + garis aksen kiri
+const AGE_WARNING_DAYS = 14;  // >= ini (dan < kritis): pil kuning (Morning Glow), tanpa aksen
+
 const SlideTerbaru = memo(function SlideTerbaru({ data, now }: { data: TvData; now: Date | null }) {
   if (data.latest.length === 0) return <EmptyState text="Belum ada tiket yang tercatat." />;
   const todayKey = now ? wibKey(now) : '';
@@ -725,8 +733,8 @@ const SlideTerbaru = memo(function SlideTerbaru({ data, now }: { data: TvData; n
           const isNew = !!now && now.getTime() - created.getTime() < NEW_BADGE_MIN * 60_000;
           const time = wibKey(created) === todayKey ? fmtTime.format(created) : `${fmtDayMonth.format(created)}, ${fmtTime.format(created)}`;
           return (
-            <tr key={t.id} className="border-t border-white/12" style={{ height: 82 }}>
-              <td className="pr-4 text-[28px] tabular-nums">
+            <tr key={t.id} className="border-t border-white/12" style={{ height: TICKET_ROW_H }}>
+              <td className="pr-4 pt-6 align-top text-[28px] tabular-nums">
                 <span className="flex items-center gap-3">
                   {time}
                   {isNew && (
@@ -734,11 +742,13 @@ const SlideTerbaru = memo(function SlideTerbaru({ data, now }: { data: TvData; n
                   )}
                 </span>
               </td>
-              <td className="pr-4 text-[26px] font-semibold tabular-nums text-white/85">{t.ticketNumber}</td>
-              <td className="truncate pr-6 text-[30px] font-semibold">{t.title}</td>
-              <td className="truncate pr-4 text-[26px] text-white/85">{t.branch}</td>
-              <td className="truncate pr-4 text-[26px] text-white/85">{t.picName ?? 'Belum ditentukan'}</td>
-              <td><StatusPill status={t.status} /></td>
+              <td className="pr-4 pt-6 align-top text-[26px] font-semibold tabular-nums text-white/85">{t.ticketNumber}</td>
+              <td className="pr-6 pt-6 align-top">
+                <p className="line-clamp-2 text-[26px] font-semibold leading-snug">{t.title}</p>
+              </td>
+              <td className="truncate pr-4 pt-6 align-top text-[26px] text-white/85">{t.branch}</td>
+              <td className="truncate pr-4 pt-6 align-top text-[26px] text-white/85">{t.picName ?? 'Belum ditentukan'}</td>
+              <td className="pt-6 align-top"><StatusPill status={t.status} /></td>
             </tr>
           );
         })}
@@ -748,7 +758,85 @@ const SlideTerbaru = memo(function SlideTerbaru({ data, now }: { data: TvData; n
 });
 
 /* ============================================================
-   SLIDE 4: LEADERBOARD STAF
+   Pil umur tiket -- hanya dipakai slide Tiket terlama. Ambang di
+   AGE_CRITICAL_DAYS/AGE_WARNING_DAYS, bukan SLA.
+   ============================================================ */
+function AgeBadge({ ageDays }: { ageDays: number | null }) {
+  if (ageDays === null) return <>—</>;
+  const label = ageDays <= 0 ? 'Hari ini' : `${ageDays} hari`;
+  if (ageDays >= AGE_CRITICAL_DAYS) {
+    return (
+      <span className="inline-block rounded-full px-4 py-1 text-[24px] font-semibold" style={{ backgroundColor: BRAND.danger, color: BRAND.ink }}>
+        {label}
+      </span>
+    );
+  }
+  if (ageDays >= AGE_WARNING_DAYS) {
+    return (
+      <span className="inline-block rounded-full px-4 py-1 text-[24px] font-semibold" style={{ backgroundColor: BRAND.glow, color: BRAND.ink }}>
+        {label}
+      </span>
+    );
+  }
+  return <>{label}</>;
+}
+
+/* ============================================================
+   SLIDE 3b: TIKET TERLAMA BELUM SELESAI
+   ============================================================ */
+const SlideTerlama = memo(function SlideTerlama({ data, now }: { data: TvData; now: Date | null }) {
+  if (data.oldest.length === 0) return <EmptyState text="Tidak ada tiket yang menunggu penyelesaian." />;
+
+  return (
+    <table className="w-full table-fixed border-collapse text-left">
+      <colgroup>
+        <col style={{ width: 160 }} />
+        <col style={{ width: 270 }} />
+        <col />
+        <col style={{ width: 360 }} />
+        <col style={{ width: 250 }} />
+        <col style={{ width: 200 }} />
+      </colgroup>
+      <thead>
+        <tr className="text-[22px] text-white/60">
+          <th className="pb-4 font-medium">Umur</th>
+          <th className="pb-4 font-medium">No. tiket</th>
+          <th className="pb-4 font-medium">Perihal</th>
+          <th className="pb-4 font-medium">Cabang / unit</th>
+          <th className="pb-4 font-medium">PIC</th>
+          <th className="pb-4 font-medium">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.oldest.map((t) => {
+          const created = new Date(t.createdAt);
+          const ageDays = now ? wibDayDiff(created, now) : null;
+          const isCritical = ageDays !== null && ageDays >= AGE_CRITICAL_DAYS;
+          return (
+            <tr key={t.id} className="border-t border-white/12" style={{ height: TICKET_ROW_H }}>
+              <td
+                className="pt-6 pr-4 pl-3 align-top text-[28px] font-semibold tabular-nums"
+                style={{ borderLeft: `4px solid ${isCritical ? BRAND.danger : 'transparent'}` }}
+              >
+                <AgeBadge ageDays={ageDays} />
+              </td>
+              <td className="pr-4 pt-6 align-top text-[26px] font-semibold tabular-nums text-white/85">{t.ticketNumber}</td>
+              <td className="pr-6 pt-6 align-top">
+                <p className="line-clamp-2 text-[26px] font-semibold leading-snug">{t.title}</p>
+              </td>
+              <td className="truncate pr-4 pt-6 align-top text-[26px] text-white/85">{t.branch}</td>
+              <td className="truncate pr-4 pt-6 align-top text-[26px] text-white/85">{t.picName ?? 'Belum ditentukan'}</td>
+              <td className="pt-6 align-top"><StatusPill status={t.status} /></td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+});
+
+/* ============================================================
+   Avatar bulat berinisial -- dipakai slide Apresiasi
    ============================================================ */
 function Avatar({ initial, size, highlight }: { initial: string; size: number; highlight?: boolean }) {
   return (
@@ -767,59 +855,8 @@ function Avatar({ initial, size, highlight }: { initial: string; size: number; h
   );
 }
 
-const SlideStaf = memo(function SlideStaf({ data }: { data: TvData }) {
-  if (data.staff.length === 0) {
-    return <EmptyState text={`Belum ada tiket yang selesai di ${data.periodLabel}.`} />;
-  }
-  const top = data.staff.slice(0, 3);
-  const rest = data.staff.slice(3);
-  // Susunan podium: 2 - 1 - 3
-  const podium = [top[1], top[0], top[2]].filter(Boolean);
-
-  return (
-    <div className="flex h-full gap-16">
-      <div className="flex flex-[1.15] items-end justify-center gap-8">
-        {podium.map((s) => {
-          const isFirst = s.rank === 1;
-          return (
-            <div key={s.initial} className="flex w-[300px] flex-col items-center">
-              <Avatar initial={s.initial} size={isFirst ? 170 : 130} highlight={isFirst} />
-              <p className="mt-5 line-clamp-2 min-h-[84px] text-center text-[32px] font-semibold leading-tight">{s.name}</p>
-              <p className="mt-2 text-[64px] font-bold leading-none tabular-nums" style={{ color: isFirst ? BRAND.glow : '#FFFFFF' }}>{s.count}</p>
-              <p className="mt-1 text-[22px] text-white/65">tiket selesai</p>
-              <div
-                className="mt-6 flex w-full items-start justify-center rounded-t-2xl pt-5 text-[56px] font-bold"
-                style={{
-                  height: s.rank === 1 ? 250 : s.rank === 2 ? 180 : 140,
-                  backgroundColor: isFirst ? BRAND.glow : 'rgba(255,255,255,0.14)',
-                  color: isFirst ? BRAND.ink : 'rgba(255,255,255,0.8)',
-                }}
-              >
-                {s.rank}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {rest.length > 0 && (
-        <ol className="flex flex-1 flex-col justify-center">
-          {rest.map((s) => (
-            <li key={s.initial} className="flex items-center gap-6 border-b border-white/10" style={{ height: 88 }}>
-              <span className="w-[56px] text-[34px] font-bold tabular-nums text-white/55">{s.rank}</span>
-              <Avatar initial={s.initial} size={60} />
-              <span className="flex-1 truncate text-[30px] font-medium">{s.name}</span>
-              <span className="text-[36px] font-bold tabular-nums">{s.count}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
-  );
-});
-
 /* ============================================================
-   SLIDE 5: UCAPAN SELAMAT
+   SLIDE 4: UCAPAN SELAMAT
    ============================================================ */
 const CONFETTI_COLORS = [BRAND.glow, BRAND.sky, BRAND.tide, '#FFFFFF'];
 
