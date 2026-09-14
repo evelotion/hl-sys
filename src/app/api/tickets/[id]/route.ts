@@ -2,13 +2,14 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
 import { requirePermission, authErrorResponse } from '@/src/lib/auth';
+import { computeSlaDeadline } from '@/src/lib/sla';
+import { wibDayKey } from '@/src/lib/time';
 import { toTicketDTO, getTicketDtoPerms } from '@/src/lib/ticketDto';
 
-function addDays(date: Date, days: number) {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
+const ALLOWED_PRIORITIES = ['URGENT', 'MEDIUM', 'LOW'];
+
+// Formatter tanggal WIB untuk pesan activity log (bukan untuk tampilan UI -- itu Fase 2).
+const fmtLogDate = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
 // Bentuk response ticket balikan PATCH -- SAMA PERSIS dengan select yang dipakai
 // src/app/(dashboard)/tickets/[id]/page.tsx (minus `logs`, yang tidak relevan untuk
@@ -65,32 +66,72 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     // 3. FULL EDIT DARI ADM
     const sessionUser = await requirePermission('ticket:edit', ticketCtx);
-    const { title, description, category, branchName, picId, requestDate, mediaRequest, issueImgUrl } = body;
+    const { title, description, category, branchName, picId, requestDate, mediaRequest, issueImgUrl, priority } = body;
+
+    if (priority !== undefined && !ALLOWED_PRIORITIES.includes(priority)) {
+      return NextResponse.json({ error: 'Prioritas tidak valid' }, { status: 400 });
+    }
 
     // AMBIL TIKET LAMA (Termasuk data PIC lama)
     const oldTicket = await db.ticket.findUnique({
       where: { id: ticketId },
-      select: { category: true, picId: true, pic: { select: { name: true } } }
+      select: { category: true, picId: true, requestDate: true, slaDeadline: true, pic: { select: { name: true } } }
     });
 
-    const baseDate = requestDate ? new Date(requestDate) : new Date();
-    let deadline = new Date(baseDate);
-    if (category === 'P3') deadline = addDays(baseDate, 3);
-    else if (category === 'Pembayaran') deadline = addDays(baseDate, 5);
-    else if (category === 'Pengadaan') deadline = addDays(baseDate, 14);
-    else deadline = addDays(baseDate, 1);
+    // Kalau requestDate tidak dikirim, pertahankan tanggal permintaan lama -- jangan
+    // ke-reset ke hari ini.
+    const baseDate = requestDate ? new Date(requestDate) : (oldTicket?.requestDate ?? new Date());
+
+    // SLA (src/lib/sla.ts) hanya dihitung ulang kalau kategori atau tanggal permintaan
+    // BENAR-BENAR berubah -- dibandingkan per tanggal kalender WIB (wibDayKey), bukan
+    // timestamp mentah. Form edit mengirim requestDate sebagai tanggal-saja (00:00 UTC),
+    // sedangkan tiket lama bisa punya jam-menit tersimpan (dibuat tanpa requestDate
+    // eksplisit) -- perbandingan timestamp mentah akan salah mendeteksi "berubah" padahal
+    // tanggalnya sama, dan menggeser SLA hanya karena field lain diedit.
+    const categoryChanged = category !== oldTicket?.category;
+    const requestDateChanged = !oldTicket?.requestDate || wibDayKey(oldTicket.requestDate) !== wibDayKey(baseDate);
+    const shouldRecalcSla = categoryChanged || requestDateChanged;
+    // undefined kalau tidak perlu dihitung ulang -- Prisma mengabaikan field bernilai
+    // undefined di `data:`, jadi slaDeadline lama benar-benar tidak tersentuh.
+    const newDeadline = shouldRecalcSla ? computeSlaDeadline(baseDate, category) : undefined;
 
     // UPDATE TIKET & AMBIL NAMA PIC BARU
     const updatedTicket = await db.ticket.update({
       where: { id: ticketId },
-      data: { title, description, category, branchName, mediaRequest, requestDate: baseDate, slaDeadline: deadline, issueImgUrl, picId: picId || null },
+      data: {
+        title, description, category, branchName, mediaRequest,
+        requestDate: baseDate,
+        slaDeadline: newDeadline,
+        issueImgUrl,
+        picId: picId || null,
+        priority,
+      },
       select: TICKET_RESPONSE_SELECT,
     });
 
     // CATAT LOG OTOMATIS
-    if (oldTicket?.category !== category) {
+    if (categoryChanged) {
       await db.activityLog.create({
         data: { ticketId, userId: sessionUser.id, action: 'SYSTEM', message: `Mengubah Kategori dari ${oldTicket?.category} menjadi ${category}` }
+      });
+    }
+
+    // SLA dihitung ulang -- log hanya kalau deadline-nya benar-benar bergeser, dan hanya
+    // sebutkan bagian yang benar-benar berubah (jangan tampilkan "kategori: P3 -> P3"
+    // kalau ternyata cuma tanggal permintaan yang berubah).
+    if (newDeadline && oldTicket?.slaDeadline?.getTime() !== newDeadline.getTime()) {
+      const parts: string[] = [];
+      if (categoryChanged) parts.push(`kategori dari ${oldTicket?.category ?? '-'} menjadi ${category}`);
+      if (requestDateChanged) {
+        const oldLabel = oldTicket?.requestDate ? fmtLogDate.format(oldTicket.requestDate) : '-';
+        parts.push(`tanggal permintaan dari ${oldLabel} menjadi ${fmtLogDate.format(baseDate)}`);
+      }
+      const oldDeadlineLabel = oldTicket?.slaDeadline ? fmtLogDate.format(oldTicket.slaDeadline) : '-';
+      await db.activityLog.create({
+        data: {
+          ticketId, userId: sessionUser.id, action: 'SYSTEM',
+          message: `SLA dihitung ulang karena ${parts.join(' dan ')}: deadline dari ${oldDeadlineLabel} menjadi ${fmtLogDate.format(newDeadline)}`,
+        }
       });
     }
 

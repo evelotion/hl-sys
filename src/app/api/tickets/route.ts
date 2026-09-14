@@ -1,7 +1,7 @@
 // hl-sys/src/app/api/tickets/route.ts
 import { NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
-import { addBusinessDays } from '@/src/lib/businessDays'; // <-- IMPORT HELPER HARI KERJA
+import { computeSlaDeadline } from '@/src/lib/sla';
 import { requirePermission, authErrorResponse } from '@/src/lib/auth';
 
 export async function POST(request: Request) {
@@ -38,17 +38,9 @@ export async function POST(request: Request) {
     // -------------------------------------------------------------------
     
     const baseDate = requestDate ? new Date(requestDate) : new Date();
-    
-    // 2. LOGIKA SLA BERDASARKAN PRIORITAS (MENGGUNAKAN HARI KERJA)
-    let slaDays = 3; // Default MEDIUM = 3 Hari Kerja
-    if (priority === 'URGENT') {
-      slaDays = 1;
-    } else if (priority === 'LOW') {
-      slaDays = 7;
-    }
 
-    // Hitung deadline pakai fungsi penambah hari kerja (skip Sabtu-Minggu)
-    const deadline = addBusinessDays(baseDate, slaDays);
+    // Basis SLA adalah kategori tiket (src/lib/sla.ts), bukan prioritas.
+    const deadline = computeSlaDeadline(baseDate, category);
 
     const newTicket = await db.ticket.create({
       data: {

@@ -106,6 +106,34 @@ diisi manual sekarang** — bidangnya akan diurus di Fase 6, bukan bagian dari b
 
 ---
 
+## ⚠️ SLA bercampur basis setelah Blueprint v3 Fase 1 (rumus SLA disatukan)
+
+Sebelum Fase 1 (`docs/BLUEPRINT-hl-sys-v3-bugfix.md`), ada dua rumus SLA yang saling
+bertabrakan: saat **create**, deadline dihitung dari `priority` (URGENT 1 hari kerja, MEDIUM 3,
+LOW 7); saat **edit**, deadline dihitung ulang dari `category` dengan hari **kalender** (bukan
+hari kerja). Fase 1 menyatukan keduanya menjadi satu rumus di `src/lib/sla.ts`: basis
+**kategori**, dihitung dalam **hari kerja** (P3 = 3, Pembayaran = 5, Pengadaan = 14, kategori
+lain = 3).
+
+**Sengaja tidak ada migrasi data untuk tiket lama.** `slaDeadline` yang sudah tersimpan di
+tiket-tiket sebelum Fase 1 dibiarkan apa adanya (hasil rumus lama berbasis prioritas) — **tidak
+dihitung ulang secara massal**, dan tidak ada script untuk itu. Akibatnya, untuk sementara:
+
+- Tiket yang dibuat/terakhir diedit **sebelum** Fase 1: `slaDeadline` masih basis prioritas
+  (hari kerja) atau basis kategori-kalender (tergantung kapan terakhir disentuh) — dua rumus lama
+  yang berbeda, sudah dijelaskan di atas.
+- Tiket yang dibuat **setelah** Fase 1: `slaDeadline` basis kategori, hari kerja (rumus baru).
+- Tiket lama ikut pindah ke rumus baru **hanya kalau** kategorinya atau tanggal permintaannya
+  diedit setelah Fase 1 — SLA-nya baru dihitung ulang saat itu, memakai rumus baru.
+
+Jadi untuk sementara waktu setelah deploy, dashboard/laporan SLA akan menampilkan campuran dua
+basis perhitungan pada tiket-tiket lama, sampai masing-masing tersentuh edit kategori/tanggal.
+Ini bukan bug — keputusan sadar dari Indra untuk menghindari perubahan data massal yang tidak
+diminta. Kalau suatu saat perlu penyeragaman retroaktif, itu pekerjaan terpisah yang butuh
+persetujuan eksplisit sebelum menjalankan script apa pun terhadap data produksi.
+
+---
+
 ## TODO operasional (belum dikerjakan, dicatat supaya tidak terlupa)
 
 **Rate limit login tidak efektif di Vercel.** `src/app/api/auth/login/route.ts` membatasi
