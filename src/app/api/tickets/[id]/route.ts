@@ -2,12 +2,28 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
 import { requirePermission, authErrorResponse } from '@/src/lib/auth';
+import { toTicketDTO, getTicketDtoPerms } from '@/src/lib/ticketDto';
 
 function addDays(date: Date, days: number) {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
   return result;
 }
+
+// Bentuk response ticket balikan PATCH -- SAMA PERSIS dengan select yang dipakai
+// src/app/(dashboard)/tickets/[id]/page.tsx (minus `logs`, yang tidak relevan untuk
+// respons edit tunggal), supaya `setTicket({ ...ticket, ...data.ticket })` di
+// TaskViewClient.tsx tidak menghasilkan objek campuran yang field-nya hilang sebagian.
+// `pic` SENGAJA select eksplisit (bukan `include: { pic: true }`) -- jangan pernah
+// mengembalikan baris User mentah ke client, itu membawa `password` (hash bcrypt) dan
+// `sessionsValidFrom`. Kunci keamanannya ada di toTicketDTO di bawah (menghapus SLA/
+// kontak sesuai permission), bukan di sempit/lebarnya select ini.
+const TICKET_RESPONSE_SELECT = {
+  id: true, ticketNumber: true, title: true, description: true, category: true, status: true,
+  issueImgUrl: true, proofImgUrl: true, branchName: true, requesterName: true, requesterEmail: true,
+  mediaRequest: true, requestDate: true, slaDeadline: true, picId: true, createdAt: true, resolvedAt: true, priority: true,
+  pic: { select: { id: true, name: true, initial: true, team: true, phone: true, email: true } },
+} as const;
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -29,12 +45,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const sessionUser = await requirePermission('ticket:status', ticketCtx);
       const updated = await db.ticket.update({
         where: { id: ticketId },
-        data: { status: body.status, resolvedAt: body.status === 'DONE' ? new Date() : null }
+        data: { status: body.status, resolvedAt: body.status === 'DONE' ? new Date() : null },
+        select: TICKET_RESPONSE_SELECT,
       });
       await db.activityLog.create({
         data: { ticketId, userId: sessionUser.id, action: 'SYSTEM', message: `Mengubah status menjadi ${body.status.replace('_', ' ')}` }
       });
-      return NextResponse.json({ success: true, ticket: updated });
+      return NextResponse.json({ success: true, ticket: toTicketDTO(updated, getTicketDtoPerms(sessionUser)) });
     }
 
     // 2. TAMBAH KOMENTAR MANUAL
@@ -67,7 +84,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const updatedTicket = await db.ticket.update({
       where: { id: ticketId },
       data: { title, description, category, branchName, mediaRequest, requestDate: baseDate, slaDeadline: deadline, issueImgUrl, picId: picId || null },
-      include: { pic: true } // <-- Tambahan agar response balikan bawa data PIC baru
+      select: TICKET_RESPONSE_SELECT,
     });
 
     // CATAT LOG OTOMATIS
@@ -89,7 +106,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     // Return flag isReassigned agar Frontend tahu kapan harus nembak notifikasi
     return NextResponse.json({
       success: true,
-      ticket: updatedTicket,
+      ticket: toTicketDTO(updatedTicket, getTicketDtoPerms(sessionUser)),
       isReassigned: oldTicket?.picId !== picId
     });
   } catch (error) {
