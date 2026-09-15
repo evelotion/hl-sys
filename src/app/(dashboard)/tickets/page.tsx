@@ -4,6 +4,7 @@ import { db } from '@/src/lib/db';
 import TicketClient from './TicketClient';
 import { requireUserForPage } from '@/src/lib/auth';
 import { can, ticketScopeWhere, categoryFilterForBidang, VALID_TEAMS } from '@/src/lib/roles';
+import { formatDateTimeWib } from '@/src/lib/time';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
       pic: t.pic?.name || 'Belum di-assign',
       status: t.status,
       timestamp: new Date(t.createdAt).getTime(),
-      date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB',
+      date: formatDateTimeWib(t.createdAt),
     };
     if (canSeeSla) base.priority = t.priority;
     return base;

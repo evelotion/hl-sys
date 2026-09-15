@@ -10,6 +10,7 @@ import TeamBacklogSection from './TeamBacklogSection';
 import TeamDigestPopup from './TeamDigestPopup';
 import type { BidangBreakdown } from '@/src/lib/dashboardStats';
 import type { TeamBacklog } from '@/src/lib/teamOversight';
+import { formatDateTimeWib } from '@/src/lib/time';
 
 interface TeamOversightData { backlog: TeamBacklog; sessionSid: string; }
 
@@ -284,7 +285,7 @@ export default function DashboardClient({
                         <div>
                           <p className="text-xs font-black text-indigo-600 mb-1 group-hover:text-indigo-700 transition-colors">{notif.ticket?.ticketNumber || 'Tugas Dihapus'}</p>
                           <p className="text-sm text-slate-600 leading-snug"><span className="font-bold text-slate-800">{notif.user?.name || 'Sistem'}</span> {notif.message}</p>
-                          <p className="text-[10px] font-bold text-slate-400 mt-2 flex items-center gap-1"><Clock size={10}/> {new Date(notif.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</p>
+                          <p className="text-[10px] font-bold text-slate-400 mt-2 flex items-center gap-1"><Clock size={10}/> {formatDateTimeWib(notif.createdAt)}</p>
                         </div>
                       </div>
                     ))

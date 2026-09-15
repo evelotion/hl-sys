@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Edit, Save, Loader2, X, Calendar, Clock, CheckCircle2, AlertCircle, Trash2, MessageCircle, Mail, Send, ArrowRight, Link as LinkIcon, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { bidangOfCategory, ROLES } from '@/src/lib/roles';
+import { formatLongDateWib, formatDateTimeWib, formatTimeWib } from '@/src/lib/time';
 
 // FUNGSI HELPER UNTUK MENGUBAH TEKS MENJADI TITLE CASE
 const toTitleCase = (str: string) => {
@@ -233,7 +234,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser, perms
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    return formatLongDateWib(dateString);
   };
 
   const isOverdue = ticket?.slaDeadline && new Date() > new Date(ticket.slaDeadline) && ticket?.status !== 'DONE';
@@ -291,7 +292,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser, perms
                     <div className="flex-1 bg-slate-50 p-4 rounded-2xl rounded-tl-none border border-slate-100">
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-bold text-xs text-slate-700">{log.user?.name} <span className="font-medium text-slate-400">({log.user?.role === 'OPERATOR' ? 'ADM' : 'PIC'})</span></span>
-                        <span className="text-[10px] font-bold text-slate-400">{new Date(log.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-[10px] font-bold text-slate-400">{formatTimeWib(log.createdAt)}</span>
                       </div>
                       <p className={`text-sm ${log.action === 'SYSTEM' ? 'text-indigo-600 font-medium italic' : 'text-slate-600'}`}>
                         {log.message}
@@ -334,7 +335,7 @@ export default function TaskViewClient({ initialTicket, pics, currentUser, perms
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Waktu Diterima (Masuk Sistem)</p>
               <p className="font-bold text-indigo-600 flex items-center gap-1.5">
                 <Clock size={14} />
-                {ticket?.createdAt ? new Date(ticket.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB' : '-'}
+                {ticket?.createdAt ? formatDateTimeWib(ticket.createdAt) : '-'}
               </p>
             </div>
 

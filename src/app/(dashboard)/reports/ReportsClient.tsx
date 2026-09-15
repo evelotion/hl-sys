@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { FileSpreadsheet, Download, Loader2 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import toast from 'react-hot-toast';
+import { formatFullDateWib } from '@/src/lib/time';
 
 export default function ReportsClient({ tickets }: { tickets: any[] }) {
   const [isExporting, setIsExporting] = useState(false);
@@ -26,7 +27,7 @@ export default function ReportsClient({ tickets }: { tickets: any[] }) {
       
       const dateCell = sheet.getCell('A2');
       sheet.mergeCells('A2', 'J2');
-      dateCell.value = `Tanggal Tarik Data: ${new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}`;
+      dateCell.value = `Tanggal Tarik Data: ${formatFullDateWib(new Date())}`;
       dateCell.font = { name: 'Arial', size: 10, italic: true };
       dateCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
@@ -61,7 +62,11 @@ export default function ReportsClient({ tickets }: { tickets: any[] }) {
 
       // 4. Masukkan Data Dinamis
       tickets.forEach((t, index) => {
-        const reqDate = t.requestDate ? new Date(t.requestDate).toLocaleDateString('id-ID') : '-';
+        // Format tampilan SENGAJA dipertahankan (bukan disatukan ke formatter WIB
+        // kanonik) -- Excel mengenali "3/8/2026" sebagai tanggal asli (bisa disortir/
+        // dihitung), sedangkan "3 Agu 2026" akan terbaca sebagai teks biasa. Cuma
+        // zona waktunya yang diperbaiki di sini.
+        const reqDate = t.requestDate ? new Date(t.requestDate).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-';
         const statusClean = t.status.replace('_', ' ');
 
         const row = sheet.addRow({

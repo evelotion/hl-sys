@@ -28,7 +28,10 @@ export function addBusinessDays(startDate: Date, days: number, holidays: string[
   return result;
 }
 
-// 2. Fungsi untuk menghitung selisih menit murni hanya di hari kerja (Senin-Jumat)
+// 2. Fungsi untuk menghitung selisih menit murni hanya di hari kerja (Senin-Jumat).
+// Dipakai untuk argometer persentase SLA di dashboard (Fase 2 Blueprint v3: dulu pakai
+// getDay() lokal server, sama seperti addBusinessDays sebelum diperbaiki -- sekarang
+// reuse isWibWeekend yang sama supaya penentuan akhir pekannya konsisten dan WIB-benar.
 export function getBusinessMinutesBetween(start: Date, end: Date): number {
   const s = new Date(start);
   const e = new Date(end);
@@ -40,8 +43,7 @@ export function getBusinessMinutesBetween(start: Date, end: Date): number {
 
   // Lakukan perulangan per 30 menit demi performa yang efisien
   while (current < e) {
-    const day = current.getDay();
-    if (day !== 0 && day !== 6) { // Jika hari kerja, hitung waktunya
+    if (!isWibWeekend(current)) { // Jika hari kerja, hitung waktunya
       totalMinutes += 30;
     }
     current.setMinutes(current.getMinutes() + 30);

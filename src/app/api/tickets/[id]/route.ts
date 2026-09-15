@@ -3,13 +3,10 @@ import { NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
 import { requirePermission, authErrorResponse } from '@/src/lib/auth';
 import { computeSlaDeadline } from '@/src/lib/sla';
-import { wibDayKey } from '@/src/lib/time';
+import { wibDayKey, formatShortDateWib } from '@/src/lib/time';
 import { toTicketDTO, getTicketDtoPerms } from '@/src/lib/ticketDto';
 
 const ALLOWED_PRIORITIES = ['URGENT', 'MEDIUM', 'LOW'];
-
-// Formatter tanggal WIB untuk pesan activity log (bukan untuk tampilan UI -- itu Fase 2).
-const fmtLogDate = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
 // Bentuk response ticket balikan PATCH -- SAMA PERSIS dengan select yang dipakai
 // src/app/(dashboard)/tickets/[id]/page.tsx (minus `logs`, yang tidak relevan untuk
@@ -123,14 +120,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const parts: string[] = [];
       if (categoryChanged) parts.push(`kategori dari ${oldTicket?.category ?? '-'} menjadi ${category}`);
       if (requestDateChanged) {
-        const oldLabel = oldTicket?.requestDate ? fmtLogDate.format(oldTicket.requestDate) : '-';
-        parts.push(`tanggal permintaan dari ${oldLabel} menjadi ${fmtLogDate.format(baseDate)}`);
+        const oldLabel = oldTicket?.requestDate ? formatShortDateWib(oldTicket.requestDate) : '-';
+        parts.push(`tanggal permintaan dari ${oldLabel} menjadi ${formatShortDateWib(baseDate)}`);
       }
-      const oldDeadlineLabel = oldTicket?.slaDeadline ? fmtLogDate.format(oldTicket.slaDeadline) : '-';
+      const oldDeadlineLabel = oldTicket?.slaDeadline ? formatShortDateWib(oldTicket.slaDeadline) : '-';
       await db.activityLog.create({
         data: {
           ticketId, userId: sessionUser.id, action: 'SYSTEM',
-          message: `SLA dihitung ulang karena ${parts.join(' dan ')}: deadline dari ${oldDeadlineLabel} menjadi ${fmtLogDate.format(newDeadline)}`,
+          message: `SLA dihitung ulang karena ${parts.join(' dan ')}: deadline dari ${oldDeadlineLabel} menjadi ${formatShortDateWib(newDeadline)}`,
         }
       });
     }

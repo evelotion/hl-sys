@@ -7,6 +7,7 @@ import { can, ticketScopeWhere, hasFullTicketScope, ASSIGNABLE_ROLES, BIDANG } f
 import { getBusinessMinutesBetween } from '@/src/lib/businessDays';
 import { getBidangBreakdown } from '@/src/lib/dashboardStats';
 import { getTeamBacklog } from '@/src/lib/teamOversight';
+import { wibDayKey, formatDateTimeWib } from '@/src/lib/time';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,10 @@ export default async function DashboardPage() {
     Lainnya: [] as any[]
   };
 
-  const todayDateStr = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+  // WIB, bukan getTimezoneOffset() -- itu offset server (0 di Vercel/UTC), bukan WIB, jadi
+  // trik "geser ke lokal" sebelumnya adalah no-op di produksi dan salah untuk tiket yang
+  // selesai jam 00.00-07.00 WIB.
+  const todayDateStr = wibDayKey(new Date());
   const milestones: { name: string, initial: string, count: number }[] = [];
 
   pics.forEach((pic: any) => {
@@ -101,7 +105,7 @@ export default async function DashboardPage() {
       if (count >= target) {
         const targetTask = doneTasks[target - 1]; 
         if (targetTask && targetTask.resolvedAt) {
-          const resolveDateStr = new Date(new Date(targetTask.resolvedAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+          const resolveDateStr = wibDayKey(new Date(targetTask.resolvedAt));
           if (resolveDateStr === todayDateStr) {
             milestones.push({ name: pic.name, initial: pic.initial, count: target });
             return true;
@@ -138,7 +142,7 @@ export default async function DashboardPage() {
       title: t.title,
       category: t.category,
       cabang: t.branchName,
-      date: new Date(t.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' WIB'
+      date: formatDateTimeWib(t.createdAt)
     };
 
     if (perms.canSeeSla) {
