@@ -1,10 +1,85 @@
 # Progress Handover — hl-sys Blueprint v2
 
-Dokumen ini merangkum posisi pekerjaan terhadap `docs/BLUEPRINT-hl-sys-v2.md`, supaya sesi
-Claude Code baru bisa langsung lanjut tanpa membaca riwayat chat sebelumnya. Update dokumen ini
-setiap kali sebuah fase selesai atau ada keputusan penting baru.
+Dokumen ini merangkum posisi pekerjaan terhadap `docs/BLUEPRINT-hl-sys-v2.md` (bagian bawah,
+sudah selesai semua) **dan** `docs/BLUEPRINT-hl-sys-v3-bugfix.md` (bagian atas, sedang berjalan),
+supaya sesi Claude Code baru bisa langsung lanjut tanpa membaca riwayat chat sebelumnya. Update
+dokumen ini setiap kali sebuah fase selesai atau ada keputusan penting baru.
 
-## Status per fase
+---
+
+## Status Blueprint v3 (`docs/BLUEPRINT-hl-sys-v3-bugfix.md`) — SEDANG BERJALAN
+
+| Fase | Status | Commit |
+|---|---|---|
+| Fase 1 — SLA satu rumus | ✅ Selesai | `3eda9db` feat(tickets): unify SLA rule to category-based business days (blueprint v3 fase 1) |
+| Fase 2 — Waktu WIB di seluruh aplikasi | ✅ Selesai | `33fa1e2` fix(time): use WIB consistently for display and date comparisons |
+| Fase 3 — Nomor tiket anti-tabrakan | ✅ Selesai | `87e3898` fix(tickets): atomic ticket numbering with yearly counter |
+| Fase 4 — Bersih-bersih (log re-assign, kode mati, pesan error, hapus user) | ⬜ Belum | — |
+| Fase 5 — Pembersihan data pribadi di git history (dikerjakan Indra sendiri) | ⬜ Belum | — |
+| Fase 6 — Persiapan deploy | ⬜ Belum | — |
+
+Dikerjakan di luar urutan fase blueprint v3, lebih dulu karena diminta didahulukan:
+
+- **Addendum Mode TV** (`docs/ADDENDUM-mode-tv-v2.md`) — ✅ Selesai. `b0a12c9` feat(tv): oldest
+  ticket slide and two-line titles. Slide "Staf terbaik" diganti "Tiket terlama belum selesai"
+  (dengan penanda warna umur tiket, bukan SLA), Perihal 2 baris, 5 baris per slide.
+- **Kebocoran kredensial PIC di response API tiket** — ✅ Selesai, ditemukan Claude Code saat
+  menguji Fase 1 (bukan bagian blueprint manapun, langsung diperbaiki karena hash password
+  bcrypt terkirim ke browser). `4f36c30` fix(api): stop leaking pic credentials in ticket
+  responses — `PATCH /api/tickets/[id]` sebelumnya memakai `include: { pic: true }` (satu-satunya
+  kejadian pola ini di seluruh codebase, sudah disisir) dan branch `UPDATE_STATUS`-nya tidak
+  punya `select` sama sekali; keduanya sekarang pakai `select` eksplisit + `toTicketDTO`.
+
+### Detail per fase v3
+
+**Fase 1 (SLA satu rumus):** `src/lib/sla.ts` (baru, satu-satunya sumber `SLA_DAYS`),
+`src/lib/holidays.ts` (baru, `HOLIDAYS_WIB` kosong — diisi manual oleh Indra sekali setahun),
+`src/lib/businessDays.ts` (`addBusinessDays` sekarang WIB-aware + skip libur).
+`api/tickets/route.ts` (create) dan `api/tickets/[id]/route.ts` (edit) sama-sama pakai
+`computeSlaDeadline(baseDate, category)`. Edit juga diperbaiki: `requestDate` tidak lagi
+ke-reset ke hari ini kalau tidak dikirim, `slaDeadline` cuma dihitung ulang kalau kategori/
+tanggal permintaan BENAR-BENAR berubah (dibandingkan per kalender WIB, bukan timestamp
+mentah), dan `priority` sekarang tersimpan saat edit (sebelumnya di-drop diam-diam). **Sengaja
+tidak ada migrasi data untuk tiket lama** — lihat `docs/RELEASE-NOTES.md` bagian "SLA bercampur
+basis" untuk konsekuensinya.
+
+**Fase 2 (waktu WIB):** 5 formatter baru di `src/lib/time.ts` (`formatShortDateWib`,
+`formatLongDateWib`, `formatFullDateWib`, `formatDateTimeWib`, `formatTimeWib` — dua yang
+terakhir otomatis menambahkan label " WIB"), dipakai di `page.tsx`, `DashboardClient.tsx`,
+`tickets/page.tsx`, `TaskViewClient.tsx`, `ReportsClient.tsx` (5 file yang disebut blueprint).
+Kolom tanggal Excel di `ReportsClient.tsx` SENGAJA dipertahankan formatnya (bukan diseragamkan
+ke formatter kanonik) supaya tetap dikenali Excel sebagai tanggal asli, bukan teks — cuma
+`timeZone` yang ditambahkan. Dua bug fungsional (bukan cuma tampilan) ikut ditemukan dan
+diperbaiki: banner milestone "selesai hari ini" di `page.tsx` (dulu pakai
+`getTimezoneOffset()`, no-op di server UTC) dan argometer SLA% (`getBusinessMinutesBetween` di
+`businessDays.ts`, dulu pakai `getDay()` lokal server) — keduanya sekarang WIB-benar.
+
+**Fase 3 (nomor tiket anti-tabrakan):** Model baru `TicketCounter { year, lastNumber }`
+(migration `20260915093215_add_ticket_counter`, dibuat lewat `prisma migrate diff` file-ke-file
+— **bukan** `migrate dev --create-only`, karena shadow database belum dikonfigurasi di Neon,
+sama seperti kasus baseline drift password dulu). `api/tickets/route.ts` sekarang menaikkan
+counter DAN membuat tiket dalam satu `db.$transaction` (nol panggilan jaringan/notifikasi di
+dalamnya), dibungkus retry maksimal 3x untuk `P2002`/`P2034`. `wibYear()` baru di `time.ts`
+menggantikan `new Date().getFullYear()` (satu-satunya pemakaian, sudah dicek lewat grep).
+`scripts/seed-ticket-counter.ts` (dry-run default) sudah dijalankan Indra dengan `--apply` ke
+DB dev — `TicketCounter` sekarang `{year: 2026, lastNumber: 834}` (823 dari seed + 11 tiket uji
+konkurensi yang sudah dihapus lagi, counter tidak turun). Diverifikasi live: 10 request
+pembuatan tiket bersamaan → 10 nomor unik berurutan (`LOG-2026-0824` s.d. `0833`), nol error;
+satu request yang sengaja gagal validasi (`title: null`) terbukti tidak menghanguskan nomor
+(request berikutnya tetap dapat nomor yang sama, membuktikan rollback transaksi bekerja);
+`wibYear()` diuji terpisah lintas batas tahun WIB/UTC (31 Des 20.00 UTC → 2027), semua PASS.
+
+**Catatan untuk Fase 4.4 (pesan error generik):** endpoint `POST /api/tickets` yang gagal
+validasi (mis. field wajib `null`) sekarang mengembalikan **500 dengan pesan Prisma mentah**
+(`PrismaClientValidationError`), bukan 400 dengan pesan yang bisa dipahami pengguna — ditemukan
+Indra saat review bukti pengujian Fase 3. Tambahkan ke daftar perbaikan pesan error saat
+mengerjakan Fase 4.4.
+
+---
+
+## Status Blueprint v2 (`docs/BLUEPRINT-hl-sys-v2.md`) — SELESAI SEMUA
+
+### Status per fase
 
 | Fase | Status | Commit |
 |---|---|---|
