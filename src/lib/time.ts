@@ -26,6 +26,13 @@ export function startOfWibYear(d: Date): Date {
   return new Date(s.getTime() - WIB_OFFSET_MS);
 }
 
+// Tahun kalender WIB, bukan new Date().getFullYear() (tahun server, UTC di Vercel) --
+// dipakai untuk nomor tiket (LOG-<tahun>-<urut>, Fase 3 Blueprint v3) supaya pergantian
+// tahun tidak meleset di jam 00.00-06.59 WIB (saat itu UTC masih tanggal 31 Desember).
+export function wibYear(d: Date): number {
+  return Number(wibDayKey(d).slice(0, 4));
+}
+
 // Selisih hari kalender WIB antara dua tanggal (berbasis wibDayKey, bukan selisih
 // milidetik dibagi 86400000), supaya tidak meleset karena jam. Dipakai untuk umur
 // tiket di slide "Tiket terlama" Mode TV.

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "backfill:bidang": "tsx scripts/backfill-bidang.ts"
+    "backfill:bidang": "tsx scripts/backfill-bidang.ts",
+    "seed:ticket-counter": "tsx scripts/seed-ticket-counter.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

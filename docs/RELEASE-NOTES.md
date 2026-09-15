@@ -134,6 +134,35 @@ persetujuan eksplisit sebelum menjalankan script apa pun terhadap data produksi.
 
 ---
 
+## 🚨 Blueprint v3 Fase 3 (nomor tiket anti-tabrakan) — URUTAN DEPLOY WAJIB DIIKUTI, BUKAN OPSIONAL
+
+Migration `20260915093215_add_ticket_counter` menambah tabel `TicketCounter { year, lastNumber }`,
+kosong (`lastNumber` default `0`) sampai diisi lewat `scripts/seed-ticket-counter.ts`. Kode
+pembuatan tiket yang baru (setelah Fase 3 selesai) mengambil nomor tiket berikutnya dengan
+menaikkan `lastNumber` tahun berjalan lalu membentuk `LOG-<tahun>-<lastNumber>` — **tanpa
+mengecek nomor tiket lama sama sekali**.
+
+**Akibatnya, urutan berikut ini wajib, tidak boleh dibalik:**
+
+1. Terapkan migration (`prisma migrate deploy`).
+2. **Segera jalankan `scripts/seed-ticket-counter.ts --apply`** untuk mengisi `lastNumber` per
+   tahun dari nomor tiket tertinggi yang sudah ada.
+3. **Baru setelah itu** deploy kode aplikasi yang memakai `TicketCounter` untuk membuat tiket.
+
+**Kalau langkah 2 dilewati atau dilakukan setelah langkah 3:** counter tahun berjalan masih `0`,
+jadi tiket pertama yang dibuat dengan kode baru akan mendapat nomor `LOG-<tahun>-0001` —
+**bertabrakan langsung** dengan `ticketNumber` tiket lama yang sudah punya nomor itu, dan gagal
+karena unique constraint (atau, kalau tiket lama itu sudah dihapus, berhasil dibuat tapi
+duplikat secara logis dengan riwayat/log yang mengacu ke nomor yang sama). Ini bukan skenario
+langka yang cuma muncul di lalu lintas tinggi — ini **pasti terjadi pada tiket pertama** kalau
+urutannya salah.
+
+Script seed **dry-run secara default** (`npx tsx scripts/seed-ticket-counter.ts`, cuma mencetak),
+menulis hanya dengan `--apply`, dan aman dijalankan berkali-kali (tidak pernah menurunkan
+`lastNumber` yang sudah ada).
+
+---
+
 ## TODO operasional (belum dikerjakan, dicatat supaya tidak terlupa)
 
 **Rate limit login tidak efektif di Vercel.** `src/app/api/auth/login/route.ts` membatasi

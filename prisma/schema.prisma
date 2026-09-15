@@ -74,6 +74,17 @@ model ActivityLog {
   createdAt DateTime @default(now())
 }
 
+// Fase 3 Blueprint v3: counter nomor tiket per tahun (LOG-<year>-<lastNumber+1>), di-upsert
+// dalam transaksi saat pembuatan tiket supaya tidak ada dua tiket yang membaca angka yang
+// sama (race condition nomor tiket). `year` dalam WIB (src/lib/time.ts: wibYear), bukan
+// tahun kalender server. Nilai awal diisi lewat scripts/seed-ticket-counter.ts (dry-run
+// default) dari nomor tertinggi yang sudah ada -- WAJIB dijalankan setelah migration ini
+// diterapkan dan SEBELUM kode baru (yang memakai tabel ini) di-deploy, lihat RELEASE-NOTES.md.
+model TicketCounter {
+  year       Int @id
+  lastNumber Int @default(0)
+}
+
 enum Role {
   OPERATOR
   PIC_LOGISTIK
